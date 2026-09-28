@@ -19,4 +19,6 @@
 /home/anay/IdeaProjects/mini_project/src/main/java/com/example/mini_project/domain/XorGate.java
 /home/anay/IdeaProjects/mini_project/src/main/java/com/example/mini_project/gui/CircuitCanvas.java
 /home/anay/IdeaProjects/mini_project/src/main/java/com/example/mini_project/gui/CircuitElementPalette.java
+/home/anay/IdeaProjects/mini_project/src/main/java/com/example/mini_project/gui/EditorToolbar.java
 /home/anay/IdeaProjects/mini_project/src/main/java/com/example/mini_project/gui/EditorWindow.java
+/home/anay/IdeaProjects/mini_project/src/main/java/com/example/mini_project/gui/ToolbarOptions.java

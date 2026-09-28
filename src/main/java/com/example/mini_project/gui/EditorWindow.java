@@ -4,6 +4,7 @@ import com.example.mini_project.controller.EditorController;
 import com.example.mini_project.domain.Circuit;
 import javafx.application.Application;
 import javafx.scene.Scene;
+import javafx.scene.control.ToolBar;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 
@@ -13,12 +14,15 @@ public class EditorWindow extends Application {
     public void start(Stage stage) {
         Circuit circuit = new Circuit();
         EditorController controller = new EditorController(circuit);
+        EditorToolbar toolbar = new EditorToolbar(circuit);
 
         CircuitElementPalette palette = new CircuitElementPalette();
         CircuitCanvas canvas = new CircuitCanvas(controller, 1200, 700);
         canvas.setPalette(palette);
+        canvas.setToolbar(toolbar);
 
         BorderPane root = new BorderPane();
+        root.setTop(toolbar);
         root.setLeft(palette);
         root.setCenter(canvas);
         root.setStyle("-fx-font-size: 13px;");

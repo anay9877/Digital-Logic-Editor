@@ -3,6 +3,8 @@ package com.example.mini_project.controller;
 import com.example.mini_project.domain.Circuit;
 import com.example.mini_project.domain.ComponentFactory;
 import com.example.mini_project.domain.ComponentType;
+import com.example.mini_project.gui.CircuitCanvas;
+import com.example.mini_project.gui.ToolbarOptions;
 
 public class EditorController {
     private final Circuit circuit;
@@ -18,6 +20,10 @@ public class EditorController {
 
     public void onElementPlaced(ComponentType type, double x, double y) {
         circuit.addElement(factory.create(type, x, y));
+    }
+
+    public void optionSelected(ToolbarOptions option, double x, double y) {
+        // nothing
     }
 
     public void undo(){

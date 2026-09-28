@@ -8,5 +8,6 @@ public enum ComponentType {
     NAND,
     NOR,
     SWITCH,
-    LED
+    LED,
+    UNKNOWN
 }
