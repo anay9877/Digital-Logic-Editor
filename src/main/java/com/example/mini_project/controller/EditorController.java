@@ -7,9 +7,12 @@ import com.example.mini_project.domain.ComponentType;
 import com.example.mini_project.gui.CircuitCanvas;
 import com.example.mini_project.gui.ToolbarOptions;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class EditorController {
     private final Circuit circuit;
-    private final ComponentFactory factory = new ComponentFactory();
+    private final Map<ComponentType, Integer> counters = new HashMap<>();
     private final SelectionManager selection = new SelectionManager();
 
     public EditorController(Circuit circuit) {
@@ -30,7 +33,10 @@ public class EditorController {
     // optionSelected the toolbaroption which is currently selected and the co-ordinates
     // why co-ordinates
     public void onElementPlaced(ComponentType type, double x, double y) {
-        circuit.addElement(factory.create(type, x, y));
+        int n = counters.getOrDefault(type, 0) + 1;
+        counters.put(type, n);
+        String id = type.name() + "-" + n;
+        circuit.addElement(type.create(id, x, y));
     }
 
     public void optionSelected(ToolbarOptions option, double x, double y) {
