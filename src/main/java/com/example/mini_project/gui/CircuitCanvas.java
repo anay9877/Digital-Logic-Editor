@@ -23,7 +23,7 @@ public class CircuitCanvas extends Pane {
         this.background = new Canvas(w, h);
         getChildren().addAll(background, nodeLayer);
         setOnMouseClicked(e -> {
-            if(paletteRef == null && toolbarRef == null) return;
+            if(paletteRef == null || toolbarRef == null) return;
 
             ComponentType comp = paletteRef.getSelected();
             ToolbarOptions tool = toolbarRef.getSelected();
@@ -33,7 +33,7 @@ public class CircuitCanvas extends Pane {
                 render();
             } else if (tool != null && tool != ToolbarOptions.Unknown) {
                 System.out.println("Toolbar action: " + tool); // temporary, to confirm this branch runs
-                // controller.optionSelected(tool, e.getX(), e.getY());
+                controller.optionSelected(tool, e.getX(), e.getY());
             }
         });
         render();
