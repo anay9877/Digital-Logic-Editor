@@ -233,7 +233,7 @@ public class SvgIconRegistry {
                     stroke-width="12"/>
 
             </g>
-
+            
             </svg>
             """;
 

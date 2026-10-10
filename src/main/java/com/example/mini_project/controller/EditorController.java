@@ -5,12 +5,12 @@ import com.example.mini_project.gui.CircuitCanvas;
 import com.example.mini_project.gui.ToolbarOptions;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class EditorController {
-
     private final Circuit circuit;
     private final Map<ComponentType, Integer> counters  = new HashMap<>();
     private final SelectionManager            selection = new SelectionManager();
@@ -67,29 +67,43 @@ public class EditorController {
     // ── Toolbar option dispatch ───────────────────────────────────────────────
 
     public void optionSelected(ToolbarOptions option, double x, double y) {
-        switch (option) {
+        switch (option){
             case Select -> handleSelect(x, y);
-            case Wire   -> { /* wire actions go through the mouse event methods below */ }
-            default     -> { /* future options */ }
+            case Delete -> handleDelete();
         }
     }
 
     // ── Select tool ───────────────────────────────────────────────────────────
 
+    // Only clears the selection grid
     private void handleSelect(double x, double y) {
-        String hitId = null;
-        for (var entry : circuit.getElements().entrySet()) {
-            var e = entry.getValue();
-            if (x >= e.getX() && x <= e.getX() + 80   // rough icon width for now
-                    && y >= e.getY() && y <= e.getY() + 40) {
-                hitId = entry.getKey();
-                break;
-            }
-        }
-        if (hitId != null) {
-            selection.selectElement(hitId, false);
-        } else {
-            selection.clear();
+//        String hitId = null;
+//        for (CircuitElement e : circuit.getElements().values()) {
+//            if ((x >= e.getX() && x <= e.getX() + e.getLength()) && (y >= e.getY() && y <= e.getY() + e.getLength())) {
+//                hitId = e.getId();
+//                break;
+//            }
+//        }
+//        if (hitId != null) {
+//            selection.selectElement(hitId, false);
+//            System.out.println("Selected: " + hitId);
+//        } else {
+//            selection.clear();
+//            System.out.println("Selection Cleared");
+//        }
+        selection.clear();   // only reached when the click did NOT land on an icon
+        System.out.println("Selection cleared");
+    }
+
+    private void handleDelete(){
+        ;
+    }
+
+    public void moveElements(Collection<String> ids, double dx, double dy){
+        for(String id : ids){
+            CircuitElement e = circuit.getElement(id);
+            if(e != null)
+                e.moveBy(dx, dy);
         }
     }
 

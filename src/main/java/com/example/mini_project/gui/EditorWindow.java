@@ -29,6 +29,12 @@ public class EditorWindow extends Application {
         palette.setStyle("-fx-padding: 10; -fx-spacing: 6; -fx-background-color: #eeeeee;");
 
         Scene scene = new Scene(root, 1200, 700);
+        // Removing the elements selected from the list when ESC key is pressed -> basically calls clear() method from SelectionManager
+        scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                controller.getSelection().clear();
+            }
+        });
         stage.setScene(scene);
         stage.setTitle("Digital Logic Editor");
         stage.show();

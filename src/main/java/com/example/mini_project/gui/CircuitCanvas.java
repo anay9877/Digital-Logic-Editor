@@ -2,48 +2,51 @@ package com.example.mini_project.gui;
 
 import com.example.mini_project.controller.EditorController;
 import com.example.mini_project.domain.*;
+import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.input.MouseButton;
-
-/**Mouse's left key --> to select
- * Mouse's right key --> drag/translate
-*/
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Polyline;
+import javafx.scene.shape.Rectangle;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
+ * Mouse's left button  --> select / rubber band / drag elements / draw wires
+ * Mouse's right button --> pan the view
+ *
  * The main drawing surface for the circuit editor.
  *
- * Rendering layers (bottom → top):
+ * Rendering layers (bottom -> top):
  *   1. Black background (Canvas)
  *   2. Wire segments   (Polylines in nodeLayer)
  *   3. Component icons (SVG nodes in nodeLayer)
- *   4. Port dots       (Circles in nodeLayer — hover-highlighted)
+ *   4. Port dots       (Circles in nodeLayer, hover-highlighted)
  *   5. Junction dots   (filled Circles in nodeLayer)
  *   6. Wire preview    (Polyline in nodeLayer, only while dragging)
+ *   7. Rubber band     (Rectangle above everything, only while selecting)
  */
 public class CircuitCanvas extends Pane {
 
     // ── Constants ─────────────────────────────────────────────────────────────
-    private static final double PORT_RADIUS     = 5.0;   // visual radius of port dot
-    private static final double JUNCTION_RADIUS = 6.0;   // visual radius of junction dot
-    private static final double WIRE_WIDTH      = 2.0;   // stroke width of wires
+    private static final double PORT_RADIUS     = 5.0;
+    private static final double JUNCTION_RADIUS = 6.0;
+    private static final double WIRE_WIDTH      = 2.0;
 
-    private static final Color COLOR_BACKGROUND  = Color.web("#1a1a2e");
-    private static final Color COLOR_WIRE        = Color.web("#fff");   // teal-green
-    private static final Color COLOR_PORT_IDLE   = Color.web("#4caf50");   // green
-    private static final Color COLOR_PORT_HOVER  = Color.web("#00e5ff");   // cyan
-    private static final Color COLOR_PORT_ACTIVE = Color.web("#ff9800");   // orange — currently drawing
-    private static final Color COLOR_JUNCTION    = Color.web("#fff");   // same as wire
-    private static final Color COLOR_PREVIEW     = Color.web("#fff");   // white dotted preview line
+    private static final Color COLOR_WIRE        = Color.web("#fff");
+    private static final Color COLOR_PORT_IDLE   = Color.web("#4caf50");
+    private static final Color COLOR_PORT_HOVER  = Color.web("#00e5ff");
+    private static final Color COLOR_JUNCTION    = Color.web("#fff");
+    private static final Color COLOR_PREVIEW     = Color.web("#fff");
 
     // ── Fields ────────────────────────────────────────────────────────────────
     private final EditorController controller;
@@ -51,53 +54,154 @@ public class CircuitCanvas extends Pane {
     private final Group nodeLayer = new Group();
     private final ViewportManager viewportManager;
     private final SvgIconRegistry iconRegistry = new SvgIconRegistry();
+    private final Rectangle rubberBand = new Rectangle();
     private CircuitElementPalette paletteRef;
     private EditorToolbar toolbarRef;
+
+    // Pan
     private double lastMousePosition_X;
     private double lastMousePosition_Y;
 
     /** The live preview line shown while the user drags a wire. */
     private Polyline previewLine = null;
 
+    // Selection (rubber band)
+    private double startX, startY;
+    private boolean pressedOnEmpty = false;
+    private boolean dragging = false;
+
+    // Move (dragging selected elements)
+    private Set<String> dragIds = Set.of();
+    private double dragStartX, dragStartY;   // in nodeLayer coordinates, so zoom/pan are handled
+    private boolean moving = false;
+
     // ── Constructor ───────────────────────────────────────────────────────────
     public CircuitCanvas(EditorController controller) {
         this.controller = controller;
         this.background = new Canvas();
-        // To make the canvas size adaptive
+
+        // make the canvas size adaptive
         background.widthProperty().bind(widthProperty());
         background.heightProperty().bind(heightProperty());
-        widthProperty().addListener((obs, oldVal, newVal) -> {
-            makeBackground();
-        });
-        heightProperty().addListener((obs, oldVal, newVal) -> {
-            makeBackground();
-        });
+
+        rubberBand.setFill(Color.rgb(0, 200, 255, 0.15));
+        rubberBand.setStroke(Color.CYAN);
+        rubberBand.setVisible(false);
+        rubberBand.setMouseTransparent(true);
+
+        controller.getSelection().setOnChange(this::render);
+
+        widthProperty().addListener((obs, oldVal, newVal) -> makeBackground());
+        heightProperty().addListener((obs, oldVal, newVal) -> makeBackground());
 
         this.viewportManager = new ViewportManager(nodeLayer);
-        getChildren().addAll(background, nodeLayer);
+        getChildren().addAll(background, nodeLayer, rubberBand);   // rubberBand last so it draws on top
+
+        // ── ONE handler per event type. Each one branches on button / active tool. ──
+
         setOnMousePressed(e -> {
-            if (e.getButton() == MouseButton.SECONDARY) {
+            pressedOnEmpty = false;
+
+            if (e.getButton() == MouseButton.SECONDARY) {          // pan
                 lastMousePosition_X = e.getX();
                 lastMousePosition_Y = e.getY();
+                return;
             }
+            if (e.getButton() != MouseButton.PRIMARY) return;
+
+            if (isWireToolActive()) {                              // wire tool
+                controller.onWireMousePressed(e.getX(), e.getY());
+                if (controller.isDrawingWire()) {
+                    previewLine = new Polyline();
+                    previewLine.setStroke(COLOR_PREVIEW);
+                    previewLine.setStrokeWidth(WIRE_WIDTH);
+                    previewLine.getStrokeDashArray().addAll(6.0, 4.0);
+                    previewLine.setMouseTransparent(true);
+                    nodeLayer.getChildren().add(previewLine);
+                }
+                return;
+            }
+
+            // rubber band: Select tool + press on empty canvas
+            pressedOnEmpty = isSelectToolActive() && e.getTarget() == background;
+            dragging = false;
+            startX = e.getX();
+            startY = e.getY();
         });
+
         setOnMouseDragged(e -> {
-            if (e.isSecondaryButtonDown()) {
+            if (e.isSecondaryButtonDown()) {                       // pan
                 double dx = e.getX() - lastMousePosition_X;
                 double dy = e.getY() - lastMousePosition_Y;
                 viewportManager.translate(dx, dy);
-
                 lastMousePosition_X = e.getX();
                 lastMousePosition_Y = e.getY();
+                return;
             }
+
+            if (controller.isDrawingWire()) {                      // wire preview
+                double[] pts = controller.onWireMouseDragged(e.getX(), e.getY());
+                if (pts != null && previewLine != null) {
+                    // pts = [startX, startY, bendX, bendY, mouseX, mouseY]
+                    previewLine.getPoints().setAll(pts[0], pts[1], pts[2], pts[3], pts[4], pts[5]);
+                }
+                return;
+            }
+
+            if (!pressedOnEmpty) return;                           // rubber band
+            dragging = true;
+            rubberBand.setX(Math.min(startX, e.getX()));
+            rubberBand.setY(Math.min(startY, e.getY()));
+            rubberBand.setWidth(Math.abs(e.getX() - startX));
+            rubberBand.setHeight(Math.abs(e.getY() - startY));
+            rubberBand.setVisible(true);
         });
+
+        setOnMouseReleased(e -> {
+            if (e.getButton() == MouseButton.PRIMARY && isWireToolActive()) {   // finish wire
+                if (previewLine != null) {
+                    nodeLayer.getChildren().remove(previewLine);
+                    previewLine = null;
+                }
+                controller.onWireMouseReleased(e.getX(), e.getY());
+                // render() is called inside onWireMouseReleased via notifyRender()
+                return;
+            }
+
+            if (!pressedOnEmpty) return;                           // finish rubber band
+            pressedOnEmpty = false;
+            rubberBand.setVisible(false);
+            if (!dragging) return;
+
+            // compare in scene space so pan/zoom on nodeLayer does not break the overlap test
+            Bounds box = rubberBand.localToScene(rubberBand.getBoundsInLocal());
+            List<String> hits = new ArrayList<>();
+            for (Node n : nodeLayer.getChildren()) {
+                if (n.getUserData() instanceof String id            // skips wires and junctions (no id)
+                        && n.localToScene(n.getBoundsInLocal()).intersects(box)) {
+                    hits.add(id);
+                }
+            }
+            controller.getSelection().selectElements(hits, e.isShiftDown() || e.isControlDown());
+        });
+
+        // plain click
         setOnMouseClicked(e -> {
-            if (e.getButton() != MouseButton.PRIMARY) return;
+            if (!e.isStillSincePress() || e.getButton() != MouseButton.PRIMARY) return;   // a drag also produces a click
             if (paletteRef == null || toolbarRef == null) return;
 
-            hookMouseEvents();
+            ComponentType comp = paletteRef.getSelected();
+            ToolbarOptions tool = toolbarRef.getSelected();
+
+            if (comp != null && comp != ComponentType.UNKNOWN) {
+                controller.onElementPlaced(comp, e.getX(), e.getY());
+            } else if (tool != null && tool != ToolbarOptions.Unknown && tool != ToolbarOptions.Wire) {
+                controller.optionSelected(tool, e.getX(), e.getY());
+            }
             render();
         });
+
+        render();
     }
 
     // ── Palette / Toolbar wiring ───────────────────────────────────────────────
@@ -117,89 +221,21 @@ public class CircuitCanvas extends Pane {
             }
         });
 
-        toolbar.setOnZoomIn(() -> {
-            viewportManager.zoomIn();
-        });
-        toolbar.setOnZoomOut(() -> {
-            viewportManager.zoomOut();
-        });
+        toolbar.setOnZoomIn(() -> viewportManager.zoomIn());
+        toolbar.setOnZoomOut(() -> viewportManager.zoomOut());
     }
 
     public void makeBackground() {
         GraphicsContext gc = background.getGraphicsContext2D();
         gc.setFill(Color.BLACK);
-        gc.fillRect(0, 0, background.getWidth(), background.getHeight());    
-    }
-
-    // ── Mouse Events ──────────────────────────────────────────────────────────
-
-    private void hookMouseEvents() {
-
-        // ── Click — place component or dispatch toolbar action ─────────────────
-        setOnMouseClicked(e -> {
-            if (paletteRef == null || toolbarRef == null) return;
-
-            ComponentType comp = paletteRef.getSelected();
-            ToolbarOptions tool = toolbarRef.getSelected();
-
-            if (comp != null && comp != ComponentType.UNKNOWN) {
-                controller.onElementPlaced(comp, e.getX(), e.getY());
-                render();
-            } else if (tool != null && tool != ToolbarOptions.Unknown
-                    && tool != ToolbarOptions.Wire) {
-                // Non-wire toolbar actions (Select, Delete, etc.)
-                controller.optionSelected(tool, e.getX(), e.getY());
-            }
-        });
-
-        // ── Mouse Pressed — begin wire drag if Wire tool is active ─────────────
-        setOnMousePressed(e -> {
-            if (!isWireToolActive()) return;
-            controller.onWireMousePressed(e.getX(), e.getY());
-
-            if (controller.isDrawingWire()) {
-                // Put up an empty preview line now; it will be updated on drag
-                previewLine = new Polyline();
-                previewLine.setStroke(COLOR_PREVIEW);
-                previewLine.setStrokeWidth(WIRE_WIDTH);
-                previewLine.getStrokeDashArray().addAll(6.0, 4.0);
-                previewLine.setMouseTransparent(true);
-                nodeLayer.getChildren().add(previewLine);
-            }
-        });
-
-        // ── Mouse Dragged — update preview line ────────────────────────────────
-        setOnMouseDragged(e -> {
-            if (!controller.isDrawingWire()) return;
-
-            double[] pts = controller.onWireMouseDragged(e.getX(), e.getY());
-            if (pts != null && previewLine != null) {
-                // pts = [startX, startY, bendX, bendY, mouseX, mouseY]
-                previewLine.getPoints().setAll(pts[0], pts[1], pts[2], pts[3], pts[4], pts[5]);
-            }
-        });
-
-        // ── Mouse Released — finalise wire segment ─────────────────────────────
-        setOnMouseReleased(e -> {
-            if (!isWireToolActive()) return;
-
-            // Remove preview line
-            if (previewLine != null) {
-                nodeLayer.getChildren().remove(previewLine);
-                previewLine = null;
-            }
-
-            controller.onWireMouseReleased(e.getX(), e.getY());
-            // render() is called inside onWireMouseReleased via notifyRender()
-        });
+        gc.fillRect(0, 0, background.getWidth(), background.getHeight());
     }
 
     // ── Rendering ─────────────────────────────────────────────────────────────
 
     /**
-     * Full redraw.  Called after every state change (element placed, wire added, etc.).
+     * Full redraw. Called after every state change (element placed, wire added, selection changed, etc.).
      */
-
     public void render() {
         makeBackground();
         nodeLayer.getChildren().clear();
@@ -207,7 +243,7 @@ public class CircuitCanvas extends Pane {
         // 2. Wire segments
         renderWireSegments();
 
-        // 3. Component icons
+        // 3. Component icons (selection glow + drag handlers live here)
         renderComponents();
 
         // 4. Port dots (on top of icons so they are always visible)
@@ -246,6 +282,64 @@ public class CircuitCanvas extends Pane {
             var icon = elem.getIconNode(iconRegistry);
             icon.setLayoutX(elem.getX());
             icon.setLayoutY(elem.getY());
+            icon.setUserData(elem.getId());   // maps a node back to its element (rubber band + drag)
+
+            if (controller.getSelection().isElementSelected(elem.getId())) {
+                icon.setEffect(new DropShadow(15, Color.CYAN));
+            }
+
+            icon.setOnMousePressed(ev -> {
+                if (ev.getButton() != MouseButton.PRIMARY || !isSelectToolActive()) return;
+                // pressing an already-selected icon drags the whole selection;
+                // pressing an unselected one drags just that icon
+                dragIds = controller.getSelection().isElementSelected(elem.getId())
+                        ? controller.getSelection().getSelectedElements()
+                        : Set.of(elem.getId());
+                Point2D p = nodeLayer.sceneToLocal(ev.getSceneX(), ev.getSceneY());
+                dragStartX = p.getX();
+                dragStartY = p.getY();
+                moving = false;
+            });
+
+            icon.setOnMouseDragged(ev -> {
+                if (!ev.isPrimaryButtonDown() || !isSelectToolActive() || dragIds.isEmpty()) return;
+                Point2D p = nodeLayer.sceneToLocal(ev.getSceneX(), ev.getSceneY());
+                double dx = p.getX() - dragStartX;
+                double dy = p.getY() - dragStartY;
+                if (!moving && Math.hypot(dx, dy) < 3) return;   // tiny jitter still counts as a click
+                moving = true;
+                for (Node n : nodeLayer.getChildren()) {
+                    if (n.getUserData() instanceof String id && dragIds.contains(id)) {
+                        n.setTranslateX(dx);   // visual only, the model is untouched
+                        n.setTranslateY(dy);
+                    }
+                }
+                ev.consume();
+            });
+
+            icon.setOnMouseReleased(ev -> {
+                if (!moving) return;
+                Point2D p = nodeLayer.sceneToLocal(ev.getSceneX(), ev.getSceneY());
+                double dx = p.getX() - dragStartX;
+                double dy = p.getY() - dragStartY;
+                controller.moveElements(dragIds, dx, dy);                    // commit once
+                if (!controller.getSelection().isElementSelected(elem.getId())) {
+                    controller.getSelection().selectElement(elem.getId(), false);  // dragged an unselected icon: select it
+                }
+                moving = false;
+                dragIds = Set.of();
+                render();                                                     // rebuild once, at the new positions
+                ev.consume();
+            });
+
+            icon.setOnMouseClicked(ev -> {
+                if (ev.getButton() != MouseButton.PRIMARY || !isSelectToolActive()) return;
+                ev.consume();
+                if (!ev.isStillSincePress()) return;   // tail end of a drag, not a real click
+                boolean additive = ev.isShiftDown() || ev.isControlDown();
+                controller.getSelection().selectElement(elem.getId(), additive);
+            });
+
             nodeLayer.getChildren().add(icon);
         }
     }
@@ -264,12 +358,8 @@ public class CircuitCanvas extends Pane {
                 dot.setFill(COLOR_PORT_IDLE);
                 dot.setStroke(Color.BLACK);
                 dot.setStrokeWidth(0.5);
+                dot.setUserData(elem.getId());   // so the dot moves along with its element while dragging
 
-                // Hover highlight
-                dot.setOnMouseEntered(e -> dot.setFill(COLOR_PORT_HOVER));
-                dot.setOnMouseExited(e  -> dot.setFill(COLOR_PORT_IDLE));
-
-                // Tooltip-style cursor change when hovering over a port
                 dot.setOnMouseEntered(e -> {
                     dot.setFill(COLOR_PORT_HOVER);
                     dot.setRadius(PORT_RADIUS + 2);
@@ -297,7 +387,7 @@ public class CircuitCanvas extends Pane {
         }
     }
 
-    // ── Helper — collect all ports from any element type ─────────────────────
+    // ── Helper: collect all ports from any element type ───────────────────────
 
     private List<Port> getAllPorts(CircuitElement elem) {
         List<Port> ports = new ArrayList<>();
@@ -312,6 +402,10 @@ public class CircuitCanvas extends Pane {
     }
 
     // ── Utility ───────────────────────────────────────────────────────────────
+
+    private boolean isSelectToolActive() {
+        return toolbarRef != null && toolbarRef.getSelected() == ToolbarOptions.Select;
+    }
 
     private boolean isWireToolActive() {
         return toolbarRef != null && toolbarRef.getSelected() == ToolbarOptions.Wire;
