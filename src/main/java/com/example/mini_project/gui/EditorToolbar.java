@@ -1,6 +1,6 @@
 package com.example.mini_project.gui;
 
-import com.example.mini_project.domain.CircuitBoard;
+import com.example.mini_project.domain.Circuit;
 import javafx.scene.control.Button;
 import javafx.scene.layout.HBox;
 
@@ -8,13 +8,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class EditorToolbar extends HBox {
-    private final CircuitBoard circuitBoard;
+    private final Circuit circuit;
     private final List<ToolbarOptions> toolbarOptions = new ArrayList<>();
     private ToolbarOptions selected;
     private Runnable onUserSelect;
 
-    public EditorToolbar(CircuitBoard circuitBoard) {
-        this.circuitBoard = circuitBoard;
+    public EditorToolbar(Circuit circuit) {
+        this.circuit = circuit;
 
         // this.selected = ToolbarOptions.Select;
         setSpacing(8);

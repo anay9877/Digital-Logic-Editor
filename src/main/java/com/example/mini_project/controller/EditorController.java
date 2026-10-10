@@ -1,6 +1,6 @@
 package com.example.mini_project.controller;
 
-import com.example.mini_project.domain.CircuitBoard;
+import com.example.mini_project.domain.Circuit;
 import com.example.mini_project.domain.CircuitElement;
 import com.example.mini_project.domain.ComponentType;
 import com.example.mini_project.gui.CircuitCanvas;
@@ -10,16 +10,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class EditorController {
-    private final CircuitBoard circuitBoard;
+    private final Circuit circuit;
     private final Map<ComponentType, Integer> counters = new HashMap<>();
     private final SelectionManager selection = new SelectionManager();
 
-    public EditorController(CircuitBoard circuitBoard) {
-        this.circuitBoard = circuitBoard;
+    public EditorController(Circuit circuit) {
+        this.circuit = circuit;
     }
 
-    public CircuitBoard getCircuitBoard() {
-        return circuitBoard;
+    public Circuit getCircuit() {
+        return circuit;
     }
 
     public SelectionManager getSelection() {
@@ -38,7 +38,7 @@ public class EditorController {
         int n = counters.getOrDefault(type, 0) + 1;
         counters.put(type, n);
         String id = type.name() + "-" + n;
-        circuitBoard.addElement(type.create(id, x, y));
+        circuit.addElement(type.create(id, x, y));
     }
 
     public void optionSelected(ToolbarOptions option, double x, double y) {
@@ -60,7 +60,7 @@ public class EditorController {
 
     private void handleSelect(double x, double y) {
         String hitId = null;
-        for (var entry : circuitBoard.getElements().entrySet()) {
+        for (var entry : circuit.getElements().entrySet()) {
             var e = entry.getValue();
             if (x >= e.getX() && x <= e.getX() + 80 // 80 = rough icon width for now
                     && y >= e.getY() && y <= e.getY() + 40) {
