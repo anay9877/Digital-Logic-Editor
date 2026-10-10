@@ -17,7 +17,7 @@ public class EditorWindow extends Application {
         EditorToolbar toolbar = new EditorToolbar(circuit);
 
         CircuitElementPalette palette = new CircuitElementPalette();
-        CircuitCanvas canvas = new CircuitCanvas(controller, 1200, 700);
+        CircuitCanvas canvas = new CircuitCanvas(controller);
         canvas.setPalette(palette);
         canvas.setToolbar(toolbar);
 
@@ -28,7 +28,7 @@ public class EditorWindow extends Application {
         root.setStyle("-fx-font-size: 13px;");
         palette.setStyle("-fx-padding: 10; -fx-spacing: 6; -fx-background-color: #eeeeee;");
 
-        Scene scene = new Scene(root, 1100, 700);
+        Scene scene = new Scene(root, 1200, 700);
         stage.setScene(scene);
         stage.setTitle("Digital Logic Editor");
         stage.show();

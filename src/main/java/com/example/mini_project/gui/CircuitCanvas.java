@@ -14,13 +14,25 @@ public class CircuitCanvas extends Pane {
     private final EditorController controller;
     private final Canvas background;
     private final Group nodeLayer = new Group();
+    private final ViewportManager viewportManager;
     private final SvgIconRegistry iconRegistry = new SvgIconRegistry();
     private CircuitElementPalette paletteRef;
     private EditorToolbar toolbarRef;
 
-    public CircuitCanvas(EditorController controller, double w, double h) {
+    public CircuitCanvas(EditorController controller) {
         this.controller = controller;
-        this.background = new Canvas(w, h);
+        this.background = new Canvas();
+        // To make the canvas size adaptive
+        background.widthProperty().bind(widthProperty());
+        background.heightProperty().bind(heightProperty());
+        widthProperty().addListener((obs, oldVal, newVal) -> {
+            makeBackground();
+        });
+        heightProperty().addListener((obs, oldVal, newVal) -> {
+            makeBackground();
+        });
+
+        this.viewportManager = new ViewportManager(nodeLayer);
         getChildren().addAll(background, nodeLayer);
         setOnMouseClicked(e -> {
             if(paletteRef == null || toolbarRef == null) return;
@@ -49,15 +61,27 @@ public class CircuitCanvas extends Pane {
     public void setToolbar(EditorToolbar toolbar) {
         this.toolbarRef = toolbar;
         toolbar.setOnUserSelect(() -> {
-            if (paletteRef != null) paletteRef.selectComponentType(ComponentType.UNKNOWN);
+            if (paletteRef != null) {
+                paletteRef.selectComponentType(ComponentType.UNKNOWN);
+            }
+        });
+
+        toolbar.setOnZoomIn(() -> {
+            viewportManager.zoomIn();
+        });
+        toolbar.setOnZoomOut(() -> {
+            viewportManager.zoomOut();
         });
     }
 
-    public void render() {
+    public void makeBackground() {
         GraphicsContext gc = background.getGraphicsContext2D();
-        gc.setFill(Color.BLACK);
-        gc.fillRect(0, 0, background.getWidth(), background.getHeight());
+        gc.setFill(Color.WHITE);
+        gc.fillRect(0, 0, background.getWidth(), background.getHeight());    
+    }
 
+    public void render() {
+        makeBackground();
         nodeLayer.getChildren().clear();
         for (CircuitElement e : controller.getCircuit().getElements().values()) {
             var icon = e.getIconNode(iconRegistry);
