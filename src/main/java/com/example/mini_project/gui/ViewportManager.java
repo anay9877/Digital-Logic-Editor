@@ -9,6 +9,8 @@ public class ViewportManager {
     private static final double MAX_ZOOM = 4.0;
     private static final double ZOOM_STEP = 0.05;
 
+    private double translateX = 0.0;
+    private double translateY = 0.0;
     public ViewportManager(Group view) {
         this.view = view;
     }
@@ -34,5 +36,11 @@ public class ViewportManager {
 
     public double getZoom() {
         return this.zoom;
+    }
+    public void translate(double dx, double dy) {
+        translateX += dx;
+        translateY += dy;
+        view.setTranslateX(translateX);
+        view.setTranslateY(translateY);
     }
 }
