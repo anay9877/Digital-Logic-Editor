@@ -2,7 +2,7 @@ package com.example.mini_project.controller;
 
 import com.example.mini_project.domain.Circuit;
 import com.example.mini_project.domain.CircuitElement;
-import com.example.mini_project.domain.ComponentFactory;
+// import com.example.mini_project.domain.ComponentFactory;
 import com.example.mini_project.domain.ComponentType;
 import com.example.mini_project.gui.CircuitCanvas;
 import com.example.mini_project.gui.ToolbarOptions;
