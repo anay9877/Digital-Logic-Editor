@@ -1,0 +1,14 @@
+.idea/vcs.xml
+target/classes/com/example/mini_project/controller/EditorController$1.class
+target/classes/com/example/mini_project/controller/EditorController.class
+target/classes/com/example/mini_project/controller/SelectionManager.class
+target/classes/com/example/mini_project/domain/CircuitElement.class
+target/classes/com/example/mini_project/domain/InputElement.class
+target/classes/com/example/mini_project/domain/OutputElement.class
+target/classes/com/example/mini_project/domain/SvgIconRegistry.class
+target/classes/com/example/mini_project/gui/CircuitCanvas.class
+target/classes/com/example/mini_project/gui/EditorWindow.class
+target/classes/com/example/mini_project/gui/ToolbarOptions.class
+target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst
+target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst
+target/*

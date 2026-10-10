@@ -7,7 +7,6 @@ com/example/mini_project/domain/NotGate.class
 com/example/mini_project/domain/ComponentType$1.class
 com/example/mini_project/gui/EditorToolbar.class
 com/example/mini_project/domain/SvgIconRegistry.class
-com/example/mini_project/domain/ComponentFactory$1.class
 com/example/mini_project/gui/CircuitCanvas.class
 com/example/mini_project/domain/ComponentType$5.class
 com/example/mini_project/domain/ComponentType$6.class
@@ -27,7 +26,6 @@ com/example/mini_project/domain/InputElement.class
 com/example/mini_project/domain/ComponentType$2.class
 com/example/mini_project/gui/ToolbarOptions.class
 com/example/mini_project/domain/ComponentType$4.class
-com/example/mini_project/domain/ComponentFactory.class
 com/example/mini_project/domain/SignalState.class
 com/example/mini_project/domain/Circuit.class
 com/example/mini_project/domain/NorGate.class
