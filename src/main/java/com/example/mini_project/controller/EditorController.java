@@ -2,10 +2,10 @@ package com.example.mini_project.controller;
 
 import com.example.mini_project.domain.Circuit;
 import com.example.mini_project.domain.CircuitElement;
-import com.example.mini_project.domain.ComponentFactory;
 import com.example.mini_project.domain.ComponentType;
 import com.example.mini_project.gui.CircuitCanvas;
 import com.example.mini_project.gui.ToolbarOptions;
+import com.example.mini_project.domain.SvgIconRegistry;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -40,37 +40,33 @@ public class EditorController {
     }
 
     public void optionSelected(ToolbarOptions option, double x, double y) {
-        switch(option){
-            case Select:
-                handleSelect(x, y);
-                break;
-//            case Delete:
-//                // later;
-//                break;
-            case Wire:
-                // later;
-                break;
-            default:
-                // later;
-                break;
+        switch (option){
+            case Select -> handleSelect(x, y);
+            case Delete -> handleDelete();
         }
     }
 
     private void handleSelect(double x, double y) {
-        String hitId = null;
-        for (var entry : circuit.getElements().entrySet()) {
-            var e = entry.getValue();
-            if (x >= e.getX() && x <= e.getX() + 80   // 80 = rough icon width for now
-                    && y >= e.getY() && y <= e.getY() + 40) {
-                hitId = entry.getKey();
-                break;
-            }
-        }
-        if (hitId != null) {
-            selection.selectElement(hitId, false); // additive wiring comes in step 3/4
-        } else {
-            selection.clear();
-        }
+//        String hitId = null;
+//        for (CircuitElement e : circuit.getElements().values()) {
+//            if ((x >= e.getX() && x <= e.getX() + e.getLength()) && (y >= e.getY() && y <= e.getY() + e.getLength())) {
+//                hitId = e.getId();
+//                break;
+//            }
+//        }
+//        if (hitId != null) {
+//            selection.selectElement(hitId, false);
+//            System.out.println("Selected: " + hitId);
+//        } else {
+//            selection.clear();
+//            System.out.println("Selection Cleared");
+//        }
+        selection.clear();   // only reached when the click did NOT land on an icon
+        System.out.println("Selection cleared");
+    }
+
+    private void handleDelete(){
+        ;
     }
 
     public void undo(){

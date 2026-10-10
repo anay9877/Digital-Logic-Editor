@@ -9,9 +9,9 @@ import org.girod.javafx.svgimage.SVGLoader;
 
 public class SvgIconRegistry {
 
-    private static final double GATE_WIDTH = 180;
-    private static final double SWITCH_WIDTH = 1000;
-    private static final double LED_WIDTH = 500;
+    public static final double GATE_WIDTH = 180;
+    public static final double SWITCH_WIDTH = 1000;
+    public static final double LED_WIDTH = 500;
 
     private static final String AND_GATE_SVG = """
             <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
@@ -170,7 +170,7 @@ public class SvgIconRegistry {
             
             <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
             
-            <g id="SVGRepo_iconCarrier"> <g> <g> <path fill="#fff00000ff" d="M40,56H24c-2.211,0-4,1.789-4,4s1.789,4,4,4h16c2.211,0,4-1.789,4-4S42.211,56,40,56z"/> <path fill="#fff00000ff" d="M32,0C16.539,0,4,12.539,4,28c0,9.445,4.695,17.781,11.863,22.844C16.438,51.25,17.375,52,20,52 s21.812,0,24,0s3.559-0.742,4.133-1.148C55.305,45.781,60,37.445,60,28C60,12.539,47.461,0,32,0z M43.891,44H36V28 c0-2.211-1.789-4-4-4s-4,1.789-4,4v16h-7.891C15.215,40.359,12,34.578,12,28c0-11.047,8.953-20,20-20s20,8.953,20,20 C52,34.578,48.785,40.359,43.891,44z"/> </g> <path fill="#fff00000" d="M43.891,44H36V28c0-2.211-1.789-4-4-4s-4,1.789-4,4v16h-7.891C15.215,40.359,12,34.578,12,28 c0-11.047,8.953-20,20-20s20,8.953,20,20C52,34.578,48.785,40.359,43.891,44z"/> </g> </g>
+            <g id="SVGRepo_iconCarrier"> <g> <g> <path fill="#ffffff" d="M40,56H24c-2.211,0-4,1.789-4,4s1.789,4,4,4h16c2.211,0,4-1.789,4-4S42.211,56,40,56z"/> <path fill="#ffffff" d="M32,0C16.539,0,4,12.539,4,28c0,9.445,4.695,17.781,11.863,22.844C16.438,51.25,17.375,52,20,52 s21.812,0,24,0s3.559-0.742,4.133-1.148C55.305,45.781,60,37.445,60,28C60,12.539,47.461,0,32,0z M43.891,44H36V28 c0-2.211-1.789-4-4-4s-4,1.789-4,4v16h-7.891C15.215,40.359,12,34.578,12,28c0-11.047,8.953-20,20-20s20,8.953,20,20 C52,34.578,48.785,40.359,43.891,44z"/> </g> <path fill="#555555" d="M43.891,44H36V28c0-2.211-1.789-4-4-4s-4,1.789-4,4v16h-7.891C15.215,40.359,12,34.578,12,28 c0-11.047,8.953-20,20-20s20,8.953,20,20C52,34.578,48.785,40.359,43.891,44z"/> </g> </g>
             
             </svg>
             """;

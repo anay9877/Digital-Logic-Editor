@@ -11,6 +11,11 @@ public class OutputElement extends CircuitElement {
         inputPort = new Port(id + "-in", PortType.INPUT, this);
     }
 
+    @Override
+    public double getLength(){
+        return SvgIconRegistry.LED_WIDTH;
+    }
+
     public SignalState getValue() {
         return inputPort.getValue();
     }

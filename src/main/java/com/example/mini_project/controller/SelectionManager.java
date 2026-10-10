@@ -1,5 +1,6 @@
 package com.example.mini_project.controller;
 
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -19,6 +20,13 @@ public class SelectionManager {
             selectedElements.remove(id); // shift-click toggles
         fire();
     }
+
+    public void selectElements(Collection<String> ids, boolean additive){
+        if(!additive) clearSilently();
+        selectedElements.addAll(ids);
+        fire();
+    }
+
     public void selectWire(String id, boolean additive) {
         if(!additive)
             clearSilently();

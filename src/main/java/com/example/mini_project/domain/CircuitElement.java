@@ -23,6 +23,10 @@ public abstract class CircuitElement {
         return y;
     }
 
+    public double getLength(){
+        return SvgIconRegistry.GATE_WIDTH;
+    }
+
     public void move(double dx, double dy) {
         x += dx;
         y += dy;

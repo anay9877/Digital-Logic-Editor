@@ -11,6 +11,11 @@ public class InputElement extends CircuitElement {
         outputPort = new Port(id + "-out", PortType.OUTPUT, this);
     }
 
+    @Override
+    public double getLength(){
+        return SvgIconRegistry.SWITCH_WIDTH;
+    }
+
     public void toggle() {
         // for toggoling on and off
     }
