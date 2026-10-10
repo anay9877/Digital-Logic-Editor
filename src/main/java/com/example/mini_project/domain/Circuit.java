@@ -1,47 +1,138 @@
 package com.example.mini_project.domain;
 
-import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class Circuit {
-    private final Map<String, CircuitElement> elements = new HashMap<>();
+
+    private final Map<String, CircuitElement> elements     = new HashMap<>();
+    private final List<WireSegment>           wireSegments = new ArrayList<>();
+    private final List<PointNode>             pointNodes   = new ArrayList<>();
+
+    // The old Wire list is kept so teammates working on other features aren't broken.
     private final List<Wire> wires = new ArrayList<>();
 
-    public void addElement(CircuitElement e) {
-        elements.put(e.getId(), e);
-    }
+    // ── Elements ──────────────────────────────────────────────────────────────
 
-    public CircuitElement getElement(String id) {
-        return elements.get(id);
-    }
+    public void addElement(CircuitElement e) { elements.put(e.getId(), e); }
 
-    public Map<String, CircuitElement> getElements() {
-        return elements;
-    }
+    public CircuitElement getElement(String id) { return elements.get(id); }
 
-    public List<Wire> getWires() {
-        return wires;
-    }
+    public Map<String, CircuitElement> getElements() { return elements; }
 
-    // **********************************************************
     public void removeElement(String id) {
-        // to be implemented
+        // Remove the element
+        elements.remove(id);
+        // Cascade-delete any wire segment whose start or end port belongs to
+        // the removed element, so dangling wires never exist.
+        wireSegments.removeIf(seg -> {
+            boolean startBelongs = seg.getStartPort() != null
+                    && seg.getStartPort().getOwner().getId().equals(id);
+            boolean endBelongs   = seg.getEndPort() != null
+                    && seg.getEndPort().getOwner().getId().equals(id);
+            if (startBelongs || endBelongs) {
+                // Disconnect the surviving PointNode end so it knows the segment is gone
+                if (seg.getStartNode() != null) seg.getStartNode().removeSegment(seg);
+                if (seg.getEndNode()   != null) seg.getEndNode().removeSegment(seg);
+                return true; // remove this segment
+            }
+            return false;
+        });
+        // Prune any PointNodes that now have no segments
+        pointNodes.removeIf(n -> n.getConnectedSegments().isEmpty());
     }
+
+    // ── Wire Segments ─────────────────────────────────────────────────────────
+
+    public List<WireSegment> getWireSegments() { return wireSegments; }
+
+    public void addWireSegment(WireSegment seg) {
+        wireSegments.add(seg);
+        // Register this segment with any PointNode endpoints
+        if (seg.getStartNode() != null) seg.getStartNode().addSegment(seg);
+        if (seg.getEndNode()   != null) seg.getEndNode().addSegment(seg);
+    }
+
+    public void removeWireSegment(WireSegment seg) {
+        wireSegments.remove(seg);
+        if (seg.getStartNode() != null) seg.getStartNode().removeSegment(seg);
+        if (seg.getEndNode()   != null) seg.getEndNode().removeSegment(seg);
+    }
+
+    // ── Point Nodes ───────────────────────────────────────────────────────────
+
+    public List<PointNode> getPointNodes() { return pointNodes; }
+
+    public void addPointNode(PointNode node) { pointNodes.add(node); }
+
+    public void removePointNode(PointNode node) { pointNodes.remove(node); }
+
+    /**
+     * Splits an existing WireSegment at a junction point.
+     *
+     * Given:
+     *   existingSeg: A → B
+     *   junction:    a new PointNode at the click position
+     *
+     * Result:
+     *   Remove existingSeg
+     *   Add  segA : A → junction  (horizontalFirst same as existingSeg)
+     *   Add  segB : junction → B  (horizontalFirst = true, routes simply)
+     *
+     * The caller is responsible for also adding the new incoming segment
+     * that triggered the junction.
+     */
+    public PointNode splitSegmentAtJunction(WireSegment existingSeg, double jx, double jy) {
+        PointNode junction = new PointNode(jx, jy);
+        addPointNode(junction);
+
+        // Build the two halves
+        WireSegment segA;
+        WireSegment segB;
+
+        if (existingSeg.getStartPort() != null) {
+            segA = WireSegment.portToNode(
+                    existingSeg.getStartPort(),
+                    existingSeg.getX1(), existingSeg.getY1(),
+                    junction,
+                    existingSeg.isHorizontalFirst());
+        } else {
+            segA = WireSegment.nodeToNode(existingSeg.getStartNode(), junction,
+                    existingSeg.isHorizontalFirst());
+        }
+
+        if (existingSeg.getEndPort() != null) {
+            segB = WireSegment.nodeToPort(
+                    junction,
+                    existingSeg.getEndPort(),
+                    existingSeg.getX2(), existingSeg.getY2(),
+                    true);
+        } else {
+            segB = WireSegment.nodeToNode(junction, existingSeg.getEndNode(), true);
+        }
+
+        removeWireSegment(existingSeg);
+        addWireSegment(segA);
+        addWireSegment(segB);
+
+        return junction;
+    }
+
+    // ── Legacy Wire list (kept for compatibility) ─────────────────────────────
+
+    public List<Wire> getWires() { return wires; }
 
     private boolean belongsTo(Wire w, String elementId) {
-        // to be implemented
-        return false;
+        return false; // to be implemented
     }
 
     public boolean addWire(Port source, Port dest) {
-        // to be implemented
-        return false;
+        return false; // to be implemented
     }
 
     public void removeWire(String id) {
         // to be implemented
     }
-    // ***************************************************
 }
