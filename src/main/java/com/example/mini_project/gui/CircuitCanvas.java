@@ -10,7 +10,6 @@ import javafx.scene.Node;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.effect.DropShadow;
-import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -149,6 +148,43 @@ public class CircuitCanvas extends Pane {
                 dragStartSceneX = ev.getSceneX();
                 dragStartSceneY = ev.getSceneY();
                 moving = false;
+            });
+
+            icon.setOnMouseDragged(ev -> {
+                if (!isSelectToolActive() || dragIds.isEmpty()) return;
+                double dx = ev.getSceneX() - dragStartSceneX;
+                double dy = ev.getSceneY() - dragStartSceneY;
+                if (!moving && Math.hypot(dx, dy) < 3) return;   // tiny jitter still counts as a click
+                moving = true;
+                for (Node n : nodeLayer.getChildren()) {
+                    if (dragIds.contains((String) n.getUserData())) {
+                        n.setTranslateX(dx);   // visual only, the model is untouched
+                        n.setTranslateY(dy);
+                    }
+                }
+                ev.consume();
+            });
+
+            icon.setOnMouseReleased(ev -> {
+                if (!moving) return;
+                double dx = ev.getSceneX() - dragStartSceneX;
+                double dy = ev.getSceneY() - dragStartSceneY;
+                controller.moveElements(dragIds, dx, dy);                  // commit once
+                if (!controller.getSelection().isElementSelected(e.getId())) {
+                    controller.getSelection().selectElement(e.getId(), false);   // dragged an unselected icon: select it
+                }
+                moving = false;
+                dragIds = java.util.Set.of();
+                render();                                                   // rebuild once, at the new positions
+                ev.consume();
+            });
+
+            icon.setOnMouseClicked(ev -> {
+                if (!isSelectToolActive()) return;
+                ev.consume();
+                if (!ev.isStillSincePress()) return;   // this click is the tail end of a drag, not a real click
+                boolean additive = ev.isShiftDown() || ev.isControlDown();
+                controller.getSelection().selectElement(e.getId(), additive);
             });
 
             nodeLayer.getChildren().add(icon);
