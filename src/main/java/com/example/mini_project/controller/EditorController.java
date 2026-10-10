@@ -7,6 +7,7 @@ import com.example.mini_project.gui.CircuitCanvas;
 import com.example.mini_project.gui.ToolbarOptions;
 import com.example.mini_project.domain.SvgIconRegistry;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -46,6 +47,7 @@ public class EditorController {
         }
     }
 
+    // Only clears the selection grid
     private void handleSelect(double x, double y) {
 //        String hitId = null;
 //        for (CircuitElement e : circuit.getElements().values()) {
@@ -67,6 +69,14 @@ public class EditorController {
 
     private void handleDelete(){
         ;
+    }
+
+    public void moveElements(Collection<String> ids, double dx, double dy){
+        for(String id : ids){
+            CircuitElement e = circuit.getElement(id);
+            if(e != null)
+                e.moveBy(dx, dy);
+        }
     }
 
     public void undo(){

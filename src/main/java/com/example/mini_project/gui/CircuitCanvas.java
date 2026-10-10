@@ -17,6 +17,7 @@ import javafx.scene.shape.Rectangle;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class CircuitCanvas extends Pane {
     private final EditorController controller;
@@ -27,9 +28,16 @@ public class CircuitCanvas extends Pane {
     private CircuitElementPalette paletteRef;
     private EditorToolbar toolbarRef;
 
+    // Selection inits
     private double startX, startY;
     private boolean pressedOnEmpty = false;
     private boolean dragging = false;
+
+    // Move inits
+    private Set<String> dragIds = Set.of();
+    private double dragStartSceneX, dragStartSceneY;
+    private boolean moving = false;
+
 
     public CircuitCanvas(EditorController controller, double w, double h) {
         this.controller = controller;
@@ -131,12 +139,16 @@ public class CircuitCanvas extends Pane {
                 icon.setEffect(new DropShadow(15, Color.CYAN));
             }
 
-            icon.setOnMouseClicked(ev -> {
-                if (isSelectToolActive()) {
-                    ev.consume();
-                    boolean additive = ev.isShiftDown() || ev.isControlDown();
-                    controller.getSelection().selectElement(e.getId(), additive);
-                }
+            icon.setOnMousePressed(ev -> {
+                if (!isSelectToolActive()) return;
+                // pressing an already-selected icon drags the whole selection;
+                // pressing an unselected one drags just that icon
+                dragIds = controller.getSelection().isElementSelected(e.getId())
+                        ? controller.getSelection().getSelectedElements()
+                        : java.util.Set.of(e.getId());
+                dragStartSceneX = ev.getSceneX();
+                dragStartSceneY = ev.getSceneY();
+                moving = false;
             });
 
             nodeLayer.getChildren().add(icon);
