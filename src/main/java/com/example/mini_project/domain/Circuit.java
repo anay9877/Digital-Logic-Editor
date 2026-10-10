@@ -1,16 +1,36 @@
 package com.example.mini_project.domain;
 
-import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class Circuit {
+    private final String id;
     private final Map<String, CircuitElement> elements = new HashMap<>();
     private final List<Wire> wires = new ArrayList<>();
+    private final List<InputElement> inputs = new ArrayList<>();
+    private final List<OutputElement> outputs = new ArrayList<>();
+
+    public Circuit(String id) {
+        this.id = id;
+    }
+
+    public String getId() {
+        return id;
+    }
 
     public void addElement(CircuitElement e) {
         elements.put(e.getId(), e);
+        if (e instanceof InputElement input) {
+            inputs.add(input);
+        } else if (e instanceof OutputElement output) {
+            outputs.add(output);
+        }
+    }
+
+    public void addWire(Wire wire) {
+        wires.add(wire);
     }
 
     public CircuitElement getElement(String id) {
@@ -25,23 +45,11 @@ public class Circuit {
         return wires;
     }
 
-    // **********************************************************
-    public void removeElement(String id) {
-        // to be implemented
+    public List<InputElement> getInputs() {
+        return inputs;
     }
 
-    private boolean belongsTo(Wire w, String elementId) {
-        // to be implemented
-        return false;
+    public List<OutputElement> getOutputs() {
+        return outputs;
     }
-
-    public boolean addWire(Port source, Port dest) {
-        // to be implemented
-        return false;
-    }
-
-    public void removeWire(String id) {
-        // to be implemented
-    }
-    // ***************************************************
 }

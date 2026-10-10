@@ -1,7 +1,7 @@
 package com.example.mini_project.gui;
 
 import com.example.mini_project.controller.EditorController;
-import com.example.mini_project.domain.Circuit;
+import com.example.mini_project.domain.CircuitBoard;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.ToolBar;
@@ -12,9 +12,9 @@ public class EditorWindow extends Application {
 
     @Override
     public void start(Stage stage) {
-        Circuit circuit = new Circuit();
-        EditorController controller = new EditorController(circuit);
-        EditorToolbar toolbar = new EditorToolbar(circuit);
+        CircuitBoard circuitBoard = new CircuitBoard();
+        EditorController controller = new EditorController(circuitBoard);
+        EditorToolbar toolbar = new EditorToolbar(circuitBoard);
 
         CircuitElementPalette palette = new CircuitElementPalette();
         CircuitCanvas canvas = new CircuitCanvas(controller, 1200, 700);
