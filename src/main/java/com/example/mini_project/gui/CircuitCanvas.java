@@ -217,7 +217,8 @@ public class CircuitCanvas extends Pane {
     public void setPalette(CircuitElementPalette palette) {
         this.paletteRef = palette;
         palette.setOnUserSelect(() -> {
-            if (toolbarRef != null) toolbarRef.selectToolbarOption(ToolbarOptions.Unknown);
+            if (toolbarRef != null)
+                toolbarRef.selectToolbarOption(ToolbarOptions.Unknown);
         });
     }
 
