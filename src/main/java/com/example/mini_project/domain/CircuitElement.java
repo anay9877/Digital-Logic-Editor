@@ -23,9 +23,9 @@ public abstract class CircuitElement {
         return y;
     }
 
-    public void move(double dx, double dy) {
-        x += dx;
-        y += dy;
+    public void moveBy(double dx, double dy){
+        this.x += dx;
+        this.y += dy;
     }
 
     public boolean hitTest(double px, double py) {
