@@ -1,1 +1,4 @@
 .idea/
+*.class
+target/*
+mini_project.iml
