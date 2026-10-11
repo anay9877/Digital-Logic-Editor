@@ -42,11 +42,11 @@ public class CircuitCanvas extends Pane {
     private static final double JUNCTION_RADIUS = 6.0;
     private static final double WIRE_WIDTH      = 2.0;
 
-    private static final Color COLOR_WIRE        = Color.web("#fff");
+    private static final Color COLOR_WIRE        = Color.web("#000");
     private static final Color COLOR_PORT_IDLE   = Color.web("#4caf50");
     private static final Color COLOR_PORT_HOVER  = Color.web("#00e5ff");
-    private static final Color COLOR_JUNCTION    = Color.web("#fff");
-    private static final Color COLOR_PREVIEW     = Color.web("#fff");
+    private static final Color COLOR_JUNCTION    = Color.web("#000");
+    private static final Color COLOR_PREVIEW     = Color.web("#000");
 
     // ── Fields ────────────────────────────────────────────────────────────────
     private final EditorController controller;
@@ -113,11 +113,13 @@ public class CircuitCanvas extends Pane {
             if (e.getButton() != MouseButton.PRIMARY) return;
 
             if (isWireToolActive()) {                              // wire tool
-                controller.onWireMousePressed(e.getX(), e.getY());
+                Point2D p = nodeLayer.sceneToLocal(e.getSceneX(), e.getSceneY());
+                controller.onWireMousePressed(p.getX(), p.getY());
                 if (controller.isDrawingWire()) {
                     previewLine = new Polyline();
                     previewLine.setStroke(COLOR_PREVIEW);
                     previewLine.setStrokeWidth(WIRE_WIDTH);
+                    previewLine.setFill(Color.TRANSPARENT);
                     previewLine.getStrokeDashArray().addAll(6.0, 4.0);
                     previewLine.setMouseTransparent(true);
                     nodeLayer.getChildren().add(previewLine);
@@ -143,7 +145,8 @@ public class CircuitCanvas extends Pane {
             }
 
             if (controller.isDrawingWire()) {                      // wire preview
-                double[] pts = controller.onWireMouseDragged(e.getX(), e.getY());
+                Point2D p = nodeLayer.sceneToLocal(e.getSceneX(), e.getSceneY());
+                double[] pts = controller.onWireMouseDragged(p.getX(), p.getY());
                 if (pts != null && previewLine != null) {
                     // pts = [startX, startY, bendX, bendY, mouseX, mouseY]
                     previewLine.getPoints().setAll(pts[0], pts[1], pts[2], pts[3], pts[4], pts[5]);
@@ -166,7 +169,8 @@ public class CircuitCanvas extends Pane {
                     nodeLayer.getChildren().remove(previewLine);
                     previewLine = null;
                 }
-                controller.onWireMouseReleased(e.getX(), e.getY());
+                Point2D p = nodeLayer.sceneToLocal(e.getSceneX(), e.getSceneY());
+                controller.onWireMouseReleased(p.getX(), p.getY());
                 // render() is called inside onWireMouseReleased via notifyRender()
                 return;
             }
@@ -197,7 +201,8 @@ public class CircuitCanvas extends Pane {
             ToolbarOptions tool = toolbarRef.getSelected();
 
             if (comp != null && comp != ComponentType.UNKNOWN) {
-                controller.onElementPlaced(comp, e.getX(), e.getY());
+                Point2D p = nodeLayer.sceneToLocal(e.getSceneX(), e.getSceneY());
+                controller.onElementPlaced(comp, p.getX(), p.getY());
             } else if (tool != null && tool != ToolbarOptions.Unknown && tool != ToolbarOptions.Wire) {
                 controller.optionSelected(tool, e.getX(), e.getY());
             }
@@ -272,7 +277,7 @@ public class CircuitCanvas extends Pane {
                     seg.getX2(), seg.getY2());
             wire.setStroke(COLOR_WIRE);
             wire.setStrokeWidth(WIRE_WIDTH);
-            wire.setFill(COLOR_WIRE);
+            wire.setFill(Color.TRANSPARENT);
             wire.setMouseTransparent(true); // hit-testing done manually in controller
             nodeLayer.getChildren().add(wire);
         }

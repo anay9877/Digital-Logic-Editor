@@ -18,6 +18,7 @@ public class EditorWindow extends Application {
 
         CircuitElementPalette palette = new CircuitElementPalette();
         CircuitCanvas canvas = new CircuitCanvas(controller);
+        controller.setCanvas(canvas);
         canvas.setPalette(palette);
         canvas.setToolbar(toolbar);
 
