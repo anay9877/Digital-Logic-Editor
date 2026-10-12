@@ -17,7 +17,8 @@ public class EditorWindow extends Application {
         EditorToolbar toolbar = new EditorToolbar(circuit);
 
         CircuitElementPalette palette = new CircuitElementPalette();
-        CircuitCanvas canvas = new CircuitCanvas(controller, 1200, 700);
+        CircuitCanvas canvas = new CircuitCanvas(controller);
+        controller.setCanvas(canvas);
         canvas.setPalette(palette);
         canvas.setToolbar(toolbar);
 
@@ -28,7 +29,7 @@ public class EditorWindow extends Application {
         root.setStyle("-fx-font-size: 13px;");
         palette.setStyle("-fx-padding: 10; -fx-spacing: 6; -fx-background-color: #eeeeee;");
 
-        Scene scene = new Scene(root, 1100, 700);
+        Scene scene = new Scene(root, 1200, 700);
         // Removing the elements selected from the list when ESC key is pressed -> basically calls clear() method from SelectionManager
         scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
             if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {

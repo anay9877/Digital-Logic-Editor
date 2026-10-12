@@ -12,37 +12,60 @@ public class EditorToolbar extends HBox {
     private final List<ToolbarOptions> toolbarOptions = new ArrayList<>();
     private ToolbarOptions selected;
     private Runnable onUserSelect;
+    private Runnable onZoomIn;
+    private Runnable onZoomOut;
 
-    public EditorToolbar(Circuit circuit){
+    public EditorToolbar(Circuit circuit) {
         this.circuit = circuit;
 
         // this.selected = ToolbarOptions.Select;
         setSpacing(8);
         setStyle("-fx-padding: 10; -fx-background-color: #dddddd;");
 
-        for(ToolbarOptions t : ToolbarOptions.values()){
-            if(t == ToolbarOptions.Unknown){
+        for (ToolbarOptions t : ToolbarOptions.values()) {
+            if (t == ToolbarOptions.Unknown) {
                 continue;
             }
             toolbarOptions.add(t);
-            Button b = new Button(t.name());
-            b.setOnAction(e -> {
+            Button button = new Button(t.name());
+            button.setOnAction(e -> {
+                if (t == ToolbarOptions.Zoom_In) {
+                    if(onZoomIn != null) {
+                        onZoomIn.run();
+                    }
+                    return;
+                }
+                if (t == ToolbarOptions.Zoom_Out) {
+                    if(onZoomOut != null) {
+                        onZoomOut.run();
+                    }
+                    return;
+                }
                 selectToolbarOption(t);
-                if (onUserSelect != null) onUserSelect.run();
+                if (onUserSelect != null) {
+                    onUserSelect.run();
+                }
             });
-            getChildren().add(b);
+            getChildren().add(button);
         }
     }
 
-    public void setOnUserSelect(Runnable r){
+    public void setOnUserSelect(Runnable r) {
         this.onUserSelect = r;
     }
 
-    public void selectToolbarOption(ToolbarOptions toolbarOption){
+    public void selectToolbarOption(ToolbarOptions toolbarOption) {
         this.selected = toolbarOption;
     }
 
-    public ToolbarOptions getSelected(){
+    public ToolbarOptions getSelected() {
         return this.selected;
+    }
+
+    public void setOnZoomIn(Runnable action) {
+        this.onZoomIn = action;
+    }
+    public void setOnZoomOut(Runnable action) {
+        this.onZoomOut = action;
     }
 }
