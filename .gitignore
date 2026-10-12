@@ -1,4 +1,4 @@
-.idea/vcs.xml
+.idea/*
 target/classes/com/example/mini_project/controller/EditorController$1.class
 target/classes/com/example/mini_project/controller/EditorController.class
 target/classes/com/example/mini_project/controller/SelectionManager.class
@@ -12,3 +12,4 @@ target/classes/com/example/mini_project/gui/ToolbarOptions.class
 target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst
 target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst
 target/*
+mini_project.iml
