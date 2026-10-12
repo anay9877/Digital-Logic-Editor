@@ -8,7 +8,7 @@ import java.util.Map;
 public class SubCircuit {
     private final String id;
     private final Map<String, CircuitElement> elements = new HashMap<>();
-    private final List<Wire> wires = new ArrayList<>();
+    private final List<WireSegment> wireSegments = new ArrayList<>();
     private final List<InputElement> inputs = new ArrayList<>();
     private final List<OutputElement> outputs = new ArrayList<>();
 
@@ -29,8 +29,8 @@ public class SubCircuit {
         }
     }
 
-    public void addWire(Wire wire) {
-        wires.add(wire);
+    public void addWireSegment(WireSegment wire) {
+        wireSegments.add(wire);
     }
 
     public CircuitElement getElement(String id) {
@@ -41,8 +41,8 @@ public class SubCircuit {
         return elements;
     }
 
-    public List<Wire> getWires() {
-        return wires;
+    public List<WireSegment> getWireSegments() {
+        return wireSegments;
     }
 
     public List<InputElement> getInputs() {
