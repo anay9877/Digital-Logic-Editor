@@ -133,7 +133,14 @@ public class CircuitCanvas extends Pane {
             startX = e.getX();
             startY = e.getY();
         });
-
+        setOnScroll(e -> {
+            if (!e.isControlDown()) return;
+            if (e.getDeltaY() > 0)
+                viewportManager.zoomIn();
+            else if (e.getDeltaY() < 0) 
+                viewportManager.zoomOut();
+            e.consume();
+        });
         setOnMouseDragged(e -> {
             if (e.isSecondaryButtonDown()) {                       // pan
                 double dx = e.getX() - lastMousePosition_X;
@@ -234,6 +241,13 @@ public class CircuitCanvas extends Pane {
         toolbar.setOnZoomOut(() -> viewportManager.zoomOut());
     }
 
+    public void zoomIn() {
+        viewportManager.zoomIn();
+    }
+
+    public void zoomOut() {
+        viewportManager.zoomOut();
+    }
     public void makeBackground() {
         GraphicsContext gc = background.getGraphicsContext2D();
         gc.setFill(Color.WHITE);
@@ -342,13 +356,29 @@ public class CircuitCanvas extends Pane {
             });
 
             icon.setOnMouseClicked(ev -> {
-                if (ev.getButton() != MouseButton.PRIMARY || !isSelectToolActive()) return;
+                if (ev.getButton() != MouseButton.PRIMARY) return;
+                if (!ev.isStillSincePress()) return;
+                if (elem instanceof InputElement input) {
+                    input.toggle();
+                    ev.consume();
+                    if (isSelectToolActive()) {
+                        boolean additive =
+                                ev.isShiftDown() || ev.isControlDown();
+                        controller.getSelection()
+                                .selectElement(elem.getId(), additive);
+                    } else {
+                        render();
+                    }
+                    return;
+                }
+                // Normal component selection
+                if (!isSelectToolActive()) return;
                 ev.consume();
-                if (!ev.isStillSincePress()) return;   // tail end of a drag, not a real click
-                boolean additive = ev.isShiftDown() || ev.isControlDown();
-                controller.getSelection().selectElement(elem.getId(), additive);
+                boolean additive =
+                        ev.isShiftDown() || ev.isControlDown();
+                controller.getSelection()
+                        .selectElement(elem.getId(), additive);
             });
-
             nodeLayer.getChildren().add(icon);
         }
     }

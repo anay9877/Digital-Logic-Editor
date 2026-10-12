@@ -20,8 +20,8 @@ public class SvgIconRegistry {
     // aligned with the artwork after resizing.
     private static final double COMPONENT_SCALE = 0.55;
     private static final double GATE_WIDTH   = 180 * COMPONENT_SCALE;  // 135 px
-    private static final double SWITCH_WIDTH = 60 * COMPONENT_SCALE;  // 45 px
-    private static final double LED_WIDTH    = 60 * COMPONENT_SCALE;  // 45 px
+    private static final double SWITCH_WIDTH = 90 * COMPONENT_SCALE;  // 45 px
+    private static final double LED_WIDTH    = 90 * COMPONENT_SCALE;  // 45 px
 
     // ── viewBox sizes of the source artwork (all square) ──────────────────────
     private static final double GATE_VIEWBOX   = 512;
