@@ -69,4 +69,18 @@ public class ViewportManager {
         translateY += dy;
         apply();
     }
+
+    public void setView(double newZoom, double tx, double ty) {
+        this.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
+        this.translateX = tx;
+        this.translateY = ty;
+        apply();
+    }
+
+    public void resetView() {
+        this.zoom = 1.0;
+        this.translateX = 0.0;
+        this.translateY = 0.0;
+        apply();
+    }
 }

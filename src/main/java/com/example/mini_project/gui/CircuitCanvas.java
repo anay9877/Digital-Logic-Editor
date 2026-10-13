@@ -29,7 +29,7 @@ import java.util.Set;
 public class CircuitCanvas extends Pane {
 
     // ── Grid Constants & Snapping ─────────────────────────────────────────────
-    public static final double GRID_SIZE = 10.0;
+    public static final double GRID_SIZE = 20.0;
 
     /** Rounds {@code v} to the nearest grid line. */
     public static double snap(double v) {
@@ -278,7 +278,7 @@ public class CircuitCanvas extends Pane {
         double minWX = (0 - tx) / zoom, maxWX = (w - tx) / zoom;
         double minWY = (0 - ty) / zoom, maxWY = (h - ty) / zoom;
 
-        gc.setFill(Color.LIGHTGRAY);
+        gc.setFill(Color.GRAY);
         double startX = Math.floor(minWX / stepWorld) * stepWorld;
         double startY = Math.floor(minWY / stepWorld) * stepWorld;
         for (double wx = startX; wx <= maxWX; wx += stepWorld) {
@@ -469,5 +469,9 @@ public class CircuitCanvas extends Pane {
 
     private boolean isWireToolActive() {
         return toolbarRef != null && toolbarRef.getSelected() == ToolbarOptions.Wire;
+    }
+
+    public ViewportManager getViewportManager() {
+        return viewportManager;
     }
 }

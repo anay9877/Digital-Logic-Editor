@@ -38,11 +38,23 @@ public class WireSegment {
     // ── Constructor helpers ───────────────────────────────────────────────────
 
     public WireSegment(double x1, double y1, double x2, double y2) {
-        this.id = "wire-" + (nextId++);
+        this("wire-" + (nextId++), x1, y1, x2, y2);
+    }
+
+    public WireSegment(String id, double x1, double y1, double x2, double y2) {
+        this.id = id != null ? id : "wire-" + (nextId++);
         this.x1 = x1;
         this.y1 = y1;
         this.x2 = x2;
         this.y2 = y2;
+    }
+
+    public static void resetId() {
+        nextId = 1;
+    }
+
+    public static void updateNextId(int id) {
+        if (id >= nextId) nextId = id + 1;
     }
 
     /** Segment from a Port to another Port. */

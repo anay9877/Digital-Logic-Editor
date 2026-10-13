@@ -42,4 +42,6 @@ public abstract class CircuitElement {
     public abstract Node getIconNode(SvgIconRegistry registry);
 
     public abstract Port findPort(String portId);
+
+    public abstract ComponentType getType();
 }
