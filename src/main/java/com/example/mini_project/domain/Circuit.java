@@ -1,5 +1,7 @@
 package com.example.mini_project.domain;
 
+import com.example.mini_project.gui.CircuitCanvas;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,8 +13,6 @@ public class Circuit {
     private final List<WireSegment>           wireSegments = new ArrayList<>();
     private final List<PointNode>             pointNodes   = new ArrayList<>();
 
-    // The old Wire list is kept so teammates working on other features aren't broken.
-    private final List<Wire> wires = new ArrayList<>();
 
     // ── Elements ──────────────────────────────────────────────────────────────
 
@@ -85,32 +85,41 @@ public class Circuit {
      * that triggered the junction.
      */
     public PointNode splitSegmentAtJunction(WireSegment existingSeg, double jx, double jy) {
+        // Project (jx, jy) onto the straight wire segment
+        if (existingSeg.isHorizontal()) {
+            jy = existingSeg.getY1();
+            jx = Math.max(Math.min(existingSeg.getX1(), existingSeg.getX2()),
+                 Math.min(jx, Math.max(existingSeg.getX1(), existingSeg.getX2())));
+        } else {
+            jx = existingSeg.getX1();
+            jy = Math.max(Math.min(existingSeg.getY1(), existingSeg.getY2()),
+                 Math.min(jy, Math.max(existingSeg.getY1(), existingSeg.getY2())));
+        }
+        jx = CircuitCanvas.snap(jx);
+        jy = CircuitCanvas.snap(jy);
+
         PointNode junction = new PointNode(jx, jy);
         addPointNode(junction);
 
-        // Build the two halves
+        // Build the two straight halves
         WireSegment segA;
-        WireSegment segB;
-
         if (existingSeg.getStartPort() != null) {
             segA = WireSegment.portToNode(
                     existingSeg.getStartPort(),
                     existingSeg.getX1(), existingSeg.getY1(),
-                    junction,
-                    existingSeg.isHorizontalFirst());
+                    junction);
         } else {
-            segA = WireSegment.nodeToNode(existingSeg.getStartNode(), junction,
-                    existingSeg.isHorizontalFirst());
+            segA = WireSegment.nodeToNode(existingSeg.getStartNode(), junction);
         }
 
+        WireSegment segB;
         if (existingSeg.getEndPort() != null) {
             segB = WireSegment.nodeToPort(
                     junction,
                     existingSeg.getEndPort(),
-                    existingSeg.getX2(), existingSeg.getY2(),
-                    true);
+                    existingSeg.getX2(), existingSeg.getY2());
         } else {
-            segB = WireSegment.nodeToNode(junction, existingSeg.getEndNode(), true);
+            segB = WireSegment.nodeToNode(junction, existingSeg.getEndNode());
         }
 
         removeWireSegment(existingSeg);
@@ -118,21 +127,5 @@ public class Circuit {
         addWireSegment(segB);
 
         return junction;
-    }
-
-    // ── Legacy Wire list (kept for compatibility) ─────────────────────────────
-
-    public List<Wire> getWires() { return wires; }
-
-    private boolean belongsTo(Wire w, String elementId) {
-        return false; // to be implemented
-    }
-
-    public boolean addWire(Port source, Port dest) {
-        return false; // to be implemented
-    }
-
-    public void removeWire(String id) {
-        // to be implemented
     }
 }

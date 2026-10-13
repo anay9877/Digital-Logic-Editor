@@ -3,6 +3,7 @@ package com.example.mini_project.domain;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import org.girod.javafx.svgimage.SVGImage;
@@ -15,41 +16,67 @@ import java.util.regex.Pattern;
 public class SvgIconRegistry {
 
     // ── Rendered sizes (canvas pixels) ────────────────────────────────────────
-    // Change this one value to resize every component consistently.
-    // Port offsets are scaled from the same SVG viewBox units below, so they remain
-    // aligned with the artwork after resizing.
-    private static final double COMPONENT_SCALE = 0.55;
-    private static final double GATE_WIDTH   = 180 * COMPONENT_SCALE;  // 135 px
-    private static final double SWITCH_WIDTH = 60 * COMPONENT_SCALE;  // 45 px
-    private static final double LED_WIDTH    = 60 * COMPONENT_SCALE;  // 45 px
+    // Gate viewBox is 512x512. At 128 px width, scale is exactly 0.25 px per viewBox unit (1/4).
+    // The artwork is shifted by dx = -16, dy = -16 in viewBox units so that:
+    //   - Gate inputs at x = 16 become (16 - 16) * 0.25 = 0.0 px (left edge)
+    //   - Gate output at x = 496 becomes (496 - 16) * 0.25 = 120.0 px
+    //   - Gate center line at y = 256 becomes (256 - 16) * 0.25 = 60.0 px
+    //   - Gate in0 at y = 174 becomes (174 - 16) * 0.25 = 39.5 px -> lands on grid dot 40.0 px
+    //   - Gate in1 at y = 338 becomes (338 - 16) * 0.25 = 80.5 px -> lands on grid dot 80.0 px
+    // Every port offset is an EXACT multiple of GRID_SIZE (10.0)!
+    private static final double GATE_WIDTH   = 128;
+    private static final double GATE_SHIFT_X = -16;
+    private static final double GATE_SHIFT_Y = -16;
+
+    // Switch + LED render in a 64 px box over a 512-unit viewBox = exactly 0.125 px per unit,
+    // so whole-unit shifts below map to whole-pixel (and grid-multiple) port offsets.
+    private static final double SWITCH_WIDTH = 64;
+    private static final double LED_WIDTH    = 64;
 
     // ── viewBox sizes of the source artwork (all square) ──────────────────────
     private static final double GATE_VIEWBOX   = 512;
-    private static final double SWITCH_VIEWBOX = 24;
-    private static final double LED_VIEWBOX    = 64;
+    private static final double SWITCH_VIEWBOX = 512;
+    private static final double LED_VIEWBOX    = 512;
 
     // pixels per viewBox unit
-    private static final double GATE_SCALE   = GATE_WIDTH   / GATE_VIEWBOX;    // 135 / 512
-    private static final double SWITCH_SCALE = SWITCH_WIDTH / SWITCH_VIEWBOX;  // 45 / 24
-    private static final double LED_SCALE    = LED_WIDTH    / LED_VIEWBOX;     // 45 / 64
+    private static final double GATE_SCALE   = GATE_WIDTH   / GATE_VIEWBOX;    // 128 / 512 = 0.25
+    private static final double SWITCH_SCALE = SWITCH_WIDTH / SWITCH_VIEWBOX;  // 64 / 512 = 0.125
+    private static final double LED_SCALE    = LED_WIDTH    / LED_VIEWBOX;     // 64 / 512 = 0.125
 
     // ── Gate port positions, in viewBox units ─────────────────────────────────
-    // Verified against the path data: every gate draws its wire stubs as 18-unit-thick
-    // rectangles, so the connection point is the MIDDLE of the stub, at its outer end.
+    // Measured from the artwork: every gate draws its wires as 12-unit strokes with round caps.
+    // A port sits on the wire's centre line, at the wire's path endpoint (the round cap adds
+    // another 6 units / ~1 px beyond it, so the connecting line overlaps the cap, no gap).
     //
-    //   input 0 stub : y 151..169  -> centre y = 160   (x starts at 16)
-    //   input 1 stub : y 343..361  -> centre y = 352   (x starts at 16)
-    //   NOT input    : y 247..265  -> centre y = 256   (x starts at 16)
-    //   output stub  : y 247..265  -> centre y = 256   (x ends at 496)
+    //   input 0 wire : "M16 174 ..."  -> port (16, 174)
+    //   input 1 wire : "M16 338 ..."  -> port (16, 338)
+    //   NOT input    : "M16 256 ..."  -> port (16, 256)
+    //   output wire  : "... 496 256"  -> port (496, 256)
     //
-    // AND / OR / XOR / NAND / NOR all share identical stub positions. For NAND / NOR /
-    // NOT the output bubble sits before the stub (x 393..456), the stub itself still
-    // ends at x = 496, so the output port is at 496 for every gate.
+    // AND / OR / XOR / NAND / NOR share identical wire positions (inputs are +-82 either
+    // side of the centre line y = 256).
     private static final double GATE_IN_X   = 16;
     private static final double GATE_OUT_X  = 496;
-    private static final double GATE_IN0_Y  = 160;
-    private static final double GATE_IN1_Y  = 352;
+    private static final double GATE_IN0_Y  = 174;
+    private static final double GATE_IN1_Y  = 338;
     private static final double GATE_MID_Y  = 256;
+
+    // ── Switch / LED connection points, in viewBox units ──────────────────────
+    // The canvas puts the icon origin on a 10 px grid dot and a port's position is
+    // origin + offset, so a port only sits on a grid dot if its pixel offset is a multiple
+    // of GRID (10). The artwork is therefore shifted (whole viewBox units) so that its
+    // connection point lands exactly on such an offset.
+    //
+    //   SWITCH output : right outer edge of the body (rect x 110 + w 292 + half stroke 6 = 408),
+    //                   on the centre line y = 256.
+    //   LED input     : bottom end of the long (anode) lead, path end (210, 491).
+    //
+    //   shifted units * 0.125 px  ->  switch out = (50, 30) px,  LED in = (30, 60) px
+    private static final double SWITCH_OUT_X = 408, SWITCH_OUT_Y = 256;
+    private static final double SWITCH_SHIFT_X = -8,  SWITCH_SHIFT_Y = -16;
+
+    private static final double LED_IN_X = 210, LED_IN_Y = 491;
+    private static final double LED_SHIFT_X = 30,  LED_SHIFT_Y = -11;
 
     // ── SVG source strings ────────────────────────────────────────────────────
 
@@ -119,7 +146,7 @@ public class SvgIconRegistry {
 
                 <g id="SVGRepo_iconCarrier">
 
-                    <path d="M16 256H87M456 256H496"
+                    <path d="M16 256H105M439 256H496"
                         stroke="#1A73E8"
                         stroke-width="12"
                         stroke-linecap="round"
@@ -183,7 +210,7 @@ public class SvgIconRegistry {
 
             <g id="SVGRepo_iconCarrier">
 
-                <path d="M16 174H87M16 338H87M456 256H496"
+                <path d="M16 174H105M16 338H105M439 256H496"
                     stroke="#1A73E8"
                     stroke-width="12"
                     stroke-linecap="round"
@@ -215,7 +242,7 @@ public class SvgIconRegistry {
 
             <g id="SVGRepo_iconCarrier">
 
-            <path d="M16 174H135M16 338H135M456 256H496"
+            <path d="M16 174H135M16 338H135M439 256H496"
                 stroke="#1A73E8"
                 stroke-width="12"
                 stroke-linecap="round"
@@ -233,6 +260,7 @@ public class SvgIconRegistry {
                     stroke-width="12"/>
 
             </g>
+            
             </svg>
             """;
 
@@ -383,7 +411,7 @@ public class SvgIconRegistry {
      *
      * Why: when width/height are present, SVGLoader computes its scale from that 800px and then
      * ALSO applies a viewBox->viewport scale (800/viewBox) to the node as a JavaFX scaleX/scaleY,
-     * which pivots around the node's centre. The artwork ends up ~32px up/left of
+     * which pivots around the node's centre. The artwork ends up shifted away from
      * (viewBoxCoord * scale). Without width/height the loader scales 1:1 from the viewBox, the
      * node scale is 1.0, and viewBoxCoord * (renderWidth / viewBoxWidth) is exact.
      */
@@ -392,6 +420,18 @@ public class SvgIconRegistry {
         if (!m.find()) return svg;
         String tag = SIZE_ATTR.matcher(m.group()).replaceAll("");
         return svg.substring(0, m.start()) + tag + svg.substring(m.end());
+    }
+
+    /** Wraps the artwork in a translate(dx dy) group (viewBox units). Art itself is untouched. */
+    private static String shiftArt(String svg, double dx, double dy) {
+        Matcher m = SVG_TAG.matcher(svg);
+        int close = svg.lastIndexOf("</svg>");
+        if (!m.find() || close < 0) return svg;
+        return svg.substring(0, m.end())
+                + "<g transform=\"translate(" + dx + " " + dy + ")\">"
+                + svg.substring(m.end(), close)
+                + "</g>"
+                + svg.substring(close);
     }
 
     private Node placeholder(String label, double width) {
@@ -405,7 +445,7 @@ public class SvgIconRegistry {
 
     /**
      * Loads an icon so that its local origin (0,0) is the top-left of the viewBox and the node's
-     * layout bounds are exactly width x width. Port offsets in {@link #getPortSpecs} are measured
+     * layout bounds are exactly width x width (a Pane). Port offsets in {@link #getPortSpecs} are measured
      * from that origin, so they stay correct whether the canvas positions the node with
      * setLayoutX/Y, setTranslateX/Y or relocate().
      */
@@ -417,72 +457,70 @@ public class SvgIconRegistry {
         if (img == null) {
             return placeholder(label, width);
         }
-        Rectangle frame = new Rectangle(width, width, Color.TRANSPARENT);   // pins the bounds / origin
-        frame.setMouseTransparent(true);                                    // clicks still hit only the artwork
-        return new Group(frame, img);
+        // A Pane has fixed layout bounds (0,0,width,width) no matter what its children do, so the
+        // node origin stays the top-left of the viewBox even when the artwork overhangs it
+        // (e.g. LED_OFF's white outline stroke sticks out ~0.3px). A Group would grow with it.
+        Pane box = new Pane(img);
+        box.setMinSize(width, width);
+        box.setPrefSize(width, width);
+        box.setMaxSize(width, width);
+        box.setPickOnBounds(false);          // clicks still hit only the artwork, as before
+        return box;
     }
 
     public Node createIcon(ComponentType type) {
-        switch (type) {
-            case AND:
-                return load(AND_GATE_SVG, "AND", GATE_WIDTH);
-            case OR:
-                return load(OR_GATE_SVG, "OR", GATE_WIDTH);
-            case NOT:
-                return load(NOT_GATE_SVG, "NOT", GATE_WIDTH);
-            case XOR:
-                return load(XOR_GATE_SVG, "XOR", GATE_WIDTH);
-            case NAND:
-                return load(NAND_GATE_SVG, "NAND", GATE_WIDTH);
-            case NOR:
-                return load(NOR_GATE_SVG, "NOR", GATE_WIDTH);
-            default:
-                throw new IllegalArgumentException("Not a gate type: " + type);
-        }
+        String svg = switch (type) {
+            case AND -> AND_GATE_SVG;
+            case OR -> OR_GATE_SVG;
+            case NOT -> NOT_GATE_SVG;
+            case XOR -> XOR_GATE_SVG;
+            case NAND -> NAND_GATE_SVG;
+            case NOR -> NOR_GATE_SVG;
+            default -> throw new IllegalArgumentException("Not a gate type: " + type);
+        };
+        return load(shiftArt(svg, GATE_SHIFT_X, GATE_SHIFT_Y), type.name(), GATE_WIDTH);
     }
 
     public Node createSwitchIcon(boolean on) {
-        return load(on ? SWITCH_ON_SVG : SWITCH_OFF_SVG, on ? "SW-ON" : "SW-OFF", SWITCH_WIDTH);
+        String svg = on ? SWITCH_ON_SVG : SWITCH_OFF_SVG;
+        return load(shiftArt(svg, SWITCH_SHIFT_X, SWITCH_SHIFT_Y), on ? "SW-ON" : "SW-OFF", SWITCH_WIDTH);
     }
 
     public Node createLedIcon(boolean on) {
-        return load(on ? LED_ON_SVG : LED_OFF_SVG, on ? "LED-ON" : "LED-OFF", LED_WIDTH);
+        String svg = on ? LED_ON_SVG : LED_OFF_SVG;
+        return load(shiftArt(svg, LED_SHIFT_X, LED_SHIFT_Y), on ? "LED-ON" : "LED-OFF", LED_WIDTH);
     }
-
-    // ── Port specifications ───────────────────────────────────────────────────
 
     /**
      * Port positions in canvas pixels, relative to the icon node's top-left (its local origin).
      * The localId must match the suffix used when ports are named in Gate / InputElement /
      * OutputElement (e.g. "in0", "in1", "out").
+     *
+     * All offsets are exact multiples of GRID_SIZE (10.0 px) so ports always fall exactly
+     * on the canvas grid dots.
      */
     public List<PortSpec> getPortSpecs(ComponentType type) {
         return switch (type) {
             case AND, OR, XOR, NAND, NOR -> List.of(
-                    new PortSpec("in0", PortType.INPUT,  gx(GATE_IN_X),  gy(GATE_IN0_Y)),
-                    new PortSpec("in1", PortType.INPUT,  gx(GATE_IN_X),  gy(GATE_IN1_Y)),
-                    new PortSpec("out", PortType.OUTPUT, gx(GATE_OUT_X), gy(GATE_MID_Y))
+                    new PortSpec("in0", PortType.INPUT,    0.0, 40.0),
+                    new PortSpec("in1", PortType.INPUT,    0.0, 80.0),
+                    new PortSpec("out", PortType.OUTPUT, 120.0, 60.0)
             );
             case NOT -> List.of(
-                    new PortSpec("in0", PortType.INPUT,  gx(GATE_IN_X),  gy(GATE_MID_Y)),
-                    new PortSpec("out", PortType.OUTPUT, gx(GATE_OUT_X), gy(GATE_MID_Y))
+                    new PortSpec("in0", PortType.INPUT,    0.0, 60.0),
+                    new PortSpec("out", PortType.OUTPUT, 120.0, 60.0)
             );
-            // SWITCH viewBox 24x24. The pill outline spans x 3..21 (+1 for the 2-unit stroke = 22),
-            // vertically centred at y = 12. The output wire leaves the right edge of the outline.
+            // SWITCH: output on the right edge of the body, on the centre line -> (50, 30) px
             case SWITCH -> List.of(
-                    new PortSpec("out", PortType.OUTPUT, 22 * SWITCH_SCALE, 12 * SWITCH_SCALE)
+                    new PortSpec("out", PortType.OUTPUT, 50.0, 30.0)
             );
-            // LED viewBox 64x64. The base pill spans y 56..64 and is centred on x = 32;
-            // the input wire enters at the bottom of the base.
+            // LED: input on the tip of the long (anode) lead -> (30, 60) px
             case LED -> List.of(
-                    new PortSpec("in0", PortType.INPUT, 32 * LED_SCALE, 64 * LED_SCALE)
+                    new PortSpec("in0", PortType.INPUT, 30.0, 60.0)
             );
             default -> List.of();
         };
     }
-
-    private static double gx(double viewBoxX) { return viewBoxX * GATE_SCALE; }
-    private static double gy(double viewBoxY) { return viewBoxY * GATE_SCALE; }
 
     /** Convenience: rendered sizes (used by canvas to size hit-boxes). */
     public static double getGateWidth()   { return GATE_WIDTH;   }
