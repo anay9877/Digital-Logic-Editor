@@ -22,6 +22,12 @@ public class Circuit {
 
     public Map<String, CircuitElement> getElements() { return elements; }
 
+    public void clear() {
+        elements.clear();
+        wireSegments.clear();
+        pointNodes.clear();
+    }
+
     public void removeElement(String id) {
         // Remove the element
         elements.remove(id);

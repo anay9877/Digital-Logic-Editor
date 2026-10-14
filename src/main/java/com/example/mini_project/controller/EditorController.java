@@ -35,10 +35,32 @@ public class EditorController {
 
     public void setCanvas(CircuitCanvas canvas) { this.canvas = canvas; }
 
-    // ── Accessors ─────────────────────────────────────────────────────────────
-
     public Circuit         getCircuit()   { return circuit;   }
     public SelectionManager getSelection() { return selection; }
+    public CircuitCanvas   getCanvas()    { return canvas;    }
+
+    public void newCircuit() {
+        circuit.clear();
+        counters.clear();
+        selection.clear();
+        PointNode.resetId();
+        WireSegment.resetId();
+        drawingWire = false;
+        dragStartPort = null;
+        dragStartNode = null;
+        if (canvas != null && canvas.getViewportManager() != null) {
+            canvas.getViewportManager().resetView();
+        }
+        notifyRender();
+    }
+
+    public void updateCounter(ComponentType type, int count) {
+        counters.put(type, Math.max(counters.getOrDefault(type, 0), count));
+    }
+
+    public void clearCounters() {
+        counters.clear();
+    }
 
     // ── Element placement ─────────────────────────────────────────────────────
 
@@ -502,7 +524,7 @@ public class EditorController {
     public void undo() { }
     public void redo() { }
 
-    private void notifyRender() {
+    public void notifyRender() {
         if (canvas != null) canvas.render();
     }
 }

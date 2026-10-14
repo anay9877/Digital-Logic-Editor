@@ -30,6 +30,7 @@ public class InputElement extends CircuitElement {
     }
 
     public SignalState getValue()  { return value; }
+    public void setValue(SignalState value) { this.value = value; }
     public Port getOutputPort()    { return outputPort; }
 
     @Override
@@ -40,5 +41,10 @@ public class InputElement extends CircuitElement {
     @Override
     public Node getIconNode(SvgIconRegistry registry) {
         return registry.createSwitchIcon(value == SignalState.ON);
+    }
+
+    @Override
+    public ComponentType getType() {
+        return ComponentType.SWITCH;
     }
 }

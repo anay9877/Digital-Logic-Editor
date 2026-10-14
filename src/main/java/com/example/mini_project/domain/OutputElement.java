@@ -36,4 +36,9 @@ public class OutputElement extends CircuitElement {
     public Node getIconNode(SvgIconRegistry registry) {
         return registry.createLedIcon(getValue() == SignalState.ON);
     }
+
+    @Override
+    public ComponentType getType() {
+        return ComponentType.LED;
+    }
 }

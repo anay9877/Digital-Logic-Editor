@@ -84,5 +84,10 @@ public abstract class Gate extends CircuitElement {
         return registry.createIcon(gateType());
     }
 
+    @Override
+    public ComponentType getType() {
+        return gateType();
+    }
+
     protected abstract ComponentType gateType();
 }

@@ -526,4 +526,25 @@ public class SvgIconRegistry {
     public static double getGateWidth()   { return GATE_WIDTH;   }
     public static double getSwitchWidth() { return SWITCH_WIDTH; }
     public static double getLedWidth()    { return LED_WIDTH;    }
+
+    public static double getGateShiftX()   { return GATE_SHIFT_X;   }
+    public static double getGateShiftY()   { return GATE_SHIFT_Y;   }
+    public static double getSwitchShiftX() { return SWITCH_SHIFT_X; }
+    public static double getSwitchShiftY() { return SWITCH_SHIFT_Y; }
+    public static double getLedShiftX()    { return LED_SHIFT_X;    }
+    public static double getLedShiftY()    { return LED_SHIFT_Y;    }
+
+    public static String getRawSvg(ComponentType type, boolean on) {
+        return switch (type) {
+            case AND -> AND_GATE_SVG;
+            case OR -> OR_GATE_SVG;
+            case NOT -> NOT_GATE_SVG;
+            case XOR -> XOR_GATE_SVG;
+            case NAND -> NAND_GATE_SVG;
+            case NOR -> NOR_GATE_SVG;
+            case SWITCH -> on ? SWITCH_ON_SVG : SWITCH_OFF_SVG;
+            case LED -> on ? LED_ON_SVG : LED_OFF_SVG;
+            default -> null;
+        };
+    }
 }
