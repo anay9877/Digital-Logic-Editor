@@ -44,20 +44,33 @@ public class EditorWindow extends Application {
         stage.show();
     }
 
+    // The below code is only for Persistence Layer
+
     private java.io.File currentFile = null;
 
+    // Creating Menubar on javafx.scene
+    // Adding a Menu named File to Menubar
     private javafx.scene.control.MenuBar createMenuBar(Stage stage, Circuit circuit, EditorController controller, CircuitCanvas canvas) {
         javafx.scene.control.MenuBar menuBar = new javafx.scene.control.MenuBar();
         javafx.scene.control.Menu fileMenu = new javafx.scene.control.Menu("File");
 
+        // Defining New
+        // On action it would delete all the elements on the canvas by calling newCircuit()
+        // NOTE -> These are the permanent changes to actual canvas.
+        //         Even undo and redo cannot bring it back!!
+        // A very new circuit canvas is generated
         javafx.scene.control.MenuItem newItem = new javafx.scene.control.MenuItem("New");
         newItem.setAccelerator(new javafx.scene.input.KeyCodeCombination(javafx.scene.input.KeyCode.N, javafx.scene.input.KeyCombination.CONTROL_DOWN));
         newItem.setOnAction(e -> {
             controller.newCircuit();
             currentFile = null;
-            stage.setTitle("Digital Logic Editor");
+            // stage.setTitle("Digital Logic Editor");
         });
 
+        // This is for opening a file which is saved with json extension
+        // Select the file using FileChooser (this is a javafx.stage class)
+        // After choosing a file pass it to CircuitSerializer.loadJson
+        // If any exception catch and throw it by showError
         javafx.scene.control.MenuItem openItem = new javafx.scene.control.MenuItem("Open / Load...");
         openItem.setAccelerator(new javafx.scene.input.KeyCodeCombination(javafx.scene.input.KeyCode.O, javafx.scene.input.KeyCombination.CONTROL_DOWN));
         openItem.setOnAction(e -> {
@@ -76,6 +89,9 @@ public class EditorWindow extends Application {
             }
         });
 
+        // To Save a file
+        // You have never saved your file before then call savaAs
+        // If you have saved the file before then overwrite in the same file
         javafx.scene.control.MenuItem saveItem = new javafx.scene.control.MenuItem("Save");
         saveItem.setAccelerator(new javafx.scene.input.KeyCodeCombination(javafx.scene.input.KeyCode.S, javafx.scene.input.KeyCombination.CONTROL_DOWN));
         saveItem.setOnAction(e -> {
@@ -90,9 +106,13 @@ public class EditorWindow extends Application {
             }
         });
 
+        // Create a complete different copy of the current file
+        // It acts like commiting changes in a file so we can revisit it
         javafx.scene.control.MenuItem saveAsItem = new javafx.scene.control.MenuItem("Save As...");
         saveAsItem.setOnAction(e -> saveAs(stage, circuit, canvas));
 
+        // Imports SVG
+        // Calls importSVG function from CircuitSerializer
         javafx.scene.control.MenuItem importSvgItem = new javafx.scene.control.MenuItem("Import SVG...");
         importSvgItem.setOnAction(e -> {
             javafx.stage.FileChooser fc = new javafx.stage.FileChooser();
@@ -110,6 +130,8 @@ public class EditorWindow extends Application {
             }
         });
 
+        // Exports SVG
+        // Calls exportSVG function from CircuitSerializer
         javafx.scene.control.MenuItem exportSvgItem = new javafx.scene.control.MenuItem("Export SVG...");
         exportSvgItem.setOnAction(e -> {
             javafx.stage.FileChooser fc = new javafx.stage.FileChooser();
@@ -125,9 +147,12 @@ public class EditorWindow extends Application {
             }
         });
 
+        // Interesting option which closes the stage itself!!
+        // Alternative option for closing the current circuit window
         javafx.scene.control.MenuItem exitItem = new javafx.scene.control.MenuItem("Exit");
         exitItem.setOnAction(e -> stage.close());
 
+        // SeparatorMenuItem adds a horizontal line
         fileMenu.getItems().addAll(
                 newItem, openItem, saveItem, saveAsItem,
                 new javafx.scene.control.SeparatorMenuItem(),
@@ -139,6 +164,7 @@ public class EditorWindow extends Application {
         return menuBar;
     }
 
+    // Only for saving Json files
     private void saveAs(Stage stage, Circuit circuit, CircuitCanvas canvas) {
         javafx.stage.FileChooser fc = new javafx.stage.FileChooser();
         fc.setTitle("Save Circuit JSON");
@@ -155,6 +181,7 @@ public class EditorWindow extends Application {
         }
     }
 
+    // The exception thrown is caught and showError function is called
     private void showError(String title, String message) {
         javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
         alert.setTitle("Error");

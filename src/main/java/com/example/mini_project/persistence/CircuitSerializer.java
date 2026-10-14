@@ -315,6 +315,8 @@ public class CircuitSerializer {
     }
 
     // ── File Operations ───────────────────────────────────────────────────────
+    // saveJson similar to importSVG
+    // loadJson somewhat similar to exportSVG
 
     public static void saveJson(File file, Circuit circuit, ViewportManager viewport) throws IOException {
         String json = toJson(circuit, viewport);
