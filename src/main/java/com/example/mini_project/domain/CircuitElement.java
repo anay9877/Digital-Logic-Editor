@@ -23,6 +23,11 @@ public abstract class CircuitElement {
         return y;
     }
 
+    public void setPosition(double x, double y) {
+        this.x = x;
+        this.y = y;
+    }
+
     public void moveBy(double dx, double dy){
         this.x += dx;
         this.y += dy;
@@ -37,4 +42,6 @@ public abstract class CircuitElement {
     public abstract Node getIconNode(SvgIconRegistry registry);
 
     public abstract Port findPort(String portId);
+
+    public abstract ComponentType getType();
 }

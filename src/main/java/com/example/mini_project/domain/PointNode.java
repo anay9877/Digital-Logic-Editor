@@ -27,9 +27,21 @@ public class PointNode {
     private final List<WireSegment> connectedSegments = new ArrayList<>();
 
     public PointNode(double x, double y) {
-        this.id = "node-" + (nextId++);
+        this("node-" + (nextId++), x, y);
+    }
+
+    public PointNode(String id, double x, double y) {
+        this.id = id;
         this.x  = x;
         this.y  = y;
+    }
+
+    public static void resetId() {
+        nextId = 1;
+    }
+
+    public static void updateNextId(int id) {
+        if (id >= nextId) nextId = id + 1;
     }
 
     // ── Getters ───────────────────────────────────────────────────────────────

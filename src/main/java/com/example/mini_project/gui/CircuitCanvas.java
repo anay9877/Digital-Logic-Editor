@@ -25,24 +25,25 @@ import java.util.Set;
  * Mouse's right button --> pan the view
  *
  * The main drawing surface for the circuit editor.
- *
- * Rendering layers (bottom -> top):
- *   1. Black background (Canvas)
- *   2. Wire segments   (Polylines in nodeLayer)
- *   3. Component icons (SVG nodes in nodeLayer)
- *   4. Port dots       (Circles in nodeLayer, hover-highlighted)
- *   5. Junction dots   (filled Circles in nodeLayer)
- *   6. Wire preview    (Polyline in nodeLayer, only while dragging)
- *   7. Rubber band     (Rectangle above everything, only while selecting)
  */
 public class CircuitCanvas extends Pane {
+
+    // ── Grid Constants & Snapping ─────────────────────────────────────────────
+    public static final double GRID_SIZE = 20.0;
+
+    /** Rounds {@code v} to the nearest grid line. */
+    public static double snap(double v) {
+        return Math.round(v / GRID_SIZE) * GRID_SIZE;
+    }
+
+    public static double snapX(double x) { return snap(x); }
+    public static double snapY(double y) { return snap(y); }
 
     // ── Constants ─────────────────────────────────────────────────────────────
     private static final double PORT_RADIUS     = 5.0;
     private static final double JUNCTION_RADIUS = 6.0;
     private static final double WIRE_WIDTH      = 2.0;
 
-    private static final Color COLOR_WIRE        = Color.web("#000");
     private static final Color COLOR_PORT_IDLE   = Color.web("#4caf50");
     private static final Color COLOR_PORT_HOVER  = Color.web("#00e5ff");
     private static final Color COLOR_JUNCTION    = Color.web("#000");
@@ -50,8 +51,15 @@ public class CircuitCanvas extends Pane {
 
     // ── Fields ────────────────────────────────────────────────────────────────
     private final EditorController controller;
-    private final Canvas background;
+
+    // Viewport grouping: contentGroup holds the circuit nodes and is zoomed / panned as one unit.
+    // The grid is NOT inside it: it lives on a screen-sized Canvas behind it and is redrawn
+    // whenever the view (size / pan / zoom) changes.
+
+    private final Group contentGroup = new Group();
+    private final Canvas gridCanvas = new Canvas();
     private final Group nodeLayer = new Group();
+
     private final ViewportManager viewportManager;
     private final SvgIconRegistry iconRegistry = new SvgIconRegistry();
     private final Rectangle rubberBand = new Rectangle();
@@ -72,20 +80,25 @@ public class CircuitCanvas extends Pane {
 
     // Move (dragging selected elements)
     private Set<String> dragIds = Set.of();
-    private double dragStartX, dragStartY;   // in nodeLayer coordinates, so zoom/pan are handled
+    private double dragStartX, dragStartY;
     private boolean moving = false;
 
     // ── Constructor ───────────────────────────────────────────────────────────
     public CircuitCanvas(EditorController controller) {
         this.controller = controller;
-        this.background = new Canvas();
+        setStyle("-fx-background-color: white;");
+
         Rectangle clip = new Rectangle();
         clip.widthProperty().bind(widthProperty());
         clip.heightProperty().bind(heightProperty());
         setClip(clip);
-        // make the canvas size adaptive
-        background.widthProperty().bind(widthProperty());
-        background.heightProperty().bind(heightProperty());
+
+        gridCanvas.setMouseTransparent(true);
+        // The grid canvas always matches the visible size of this pane (never larger).
+        gridCanvas.widthProperty().bind(widthProperty());
+        gridCanvas.heightProperty().bind(heightProperty());
+
+        contentGroup.getChildren().add(nodeLayer);
 
         rubberBand.setFill(Color.rgb(0, 200, 255, 0.15));
         rubberBand.setStroke(Color.CYAN);
@@ -94,11 +107,13 @@ public class CircuitCanvas extends Pane {
 
         controller.getSelection().setOnChange(this::render);
 
-        widthProperty().addListener((obs, oldVal, newVal) -> makeBackground());
-        heightProperty().addListener((obs, oldVal, newVal) -> makeBackground());
+        this.viewportManager = new ViewportManager(contentGroup);
+        viewportManager.setOnChange(this::drawGrid);
+        getChildren().addAll(gridCanvas, contentGroup, rubberBand);   // grid at the back, rubberBand on top
 
-        this.viewportManager = new ViewportManager(nodeLayer);
-        getChildren().addAll(background, nodeLayer, rubberBand);   // rubberBand last so it draws on top
+        // Redraw the grid when the pane is resized; zoom buttons zoom around the visible centre.
+        widthProperty().addListener((o, a, b) -> onViewResized());
+        heightProperty().addListener((o, a, b) -> onViewResized());
 
         // ── ONE handler per event type. Each one branches on button / active tool. ──
 
@@ -113,7 +128,7 @@ public class CircuitCanvas extends Pane {
             if (e.getButton() != MouseButton.PRIMARY) return;
 
             if (isWireToolActive()) {                              // wire tool
-                Point2D p = nodeLayer.sceneToLocal(e.getSceneX(), e.getSceneY());
+                Point2D p = contentGroup.sceneToLocal(e.getSceneX(), e.getSceneY());
                 controller.onWireMousePressed(p.getX(), p.getY());
                 if (controller.isDrawingWire()) {
                     previewLine = new Polyline();
@@ -128,7 +143,7 @@ public class CircuitCanvas extends Pane {
             }
 
             // rubber band: Select tool + press on empty canvas
-            pressedOnEmpty = isSelectToolActive() && e.getTarget() == background;
+            pressedOnEmpty = isSelectToolActive() && (e.getTarget() == this || e.getTarget() == contentGroup || e.getTarget() == gridCanvas);
             dragging = false;
             startX = e.getX();
             startY = e.getY();
@@ -152,11 +167,13 @@ public class CircuitCanvas extends Pane {
             }
 
             if (controller.isDrawingWire()) {                      // wire preview
-                Point2D p = nodeLayer.sceneToLocal(e.getSceneX(), e.getSceneY());
+                Point2D p = contentGroup.sceneToLocal(e.getSceneX(), e.getSceneY());
                 double[] pts = controller.onWireMouseDragged(p.getX(), p.getY());
                 if (pts != null && previewLine != null) {
-                    // pts = [startX, startY, bendX, bendY, mouseX, mouseY]
-                    previewLine.getPoints().setAll(pts[0], pts[1], pts[2], pts[3], pts[4], pts[5]);
+                    previewLine.getPoints().clear();
+                    for (double pt : pts) {
+                        previewLine.getPoints().add(pt);
+                    }
                 }
                 return;
             }
@@ -176,9 +193,8 @@ public class CircuitCanvas extends Pane {
                     nodeLayer.getChildren().remove(previewLine);
                     previewLine = null;
                 }
-                Point2D p = nodeLayer.sceneToLocal(e.getSceneX(), e.getSceneY());
+                Point2D p = contentGroup.sceneToLocal(e.getSceneX(), e.getSceneY());
                 controller.onWireMouseReleased(p.getX(), p.getY());
-                // render() is called inside onWireMouseReleased via notifyRender()
                 return;
             }
 
@@ -187,11 +203,10 @@ public class CircuitCanvas extends Pane {
             rubberBand.setVisible(false);
             if (!dragging) return;
 
-            // compare in scene space so pan/zoom on nodeLayer does not break the overlap test
             Bounds box = rubberBand.localToScene(rubberBand.getBoundsInLocal());
             List<String> hits = new ArrayList<>();
             for (Node n : nodeLayer.getChildren()) {
-                if (n.getUserData() instanceof String id            // skips wires and junctions (no id)
+                if (n.getUserData() instanceof String id
                         && n.localToScene(n.getBoundsInLocal()).intersects(box)) {
                     hits.add(id);
                 }
@@ -201,14 +216,14 @@ public class CircuitCanvas extends Pane {
 
         // plain click
         setOnMouseClicked(e -> {
-            if (!e.isStillSincePress() || e.getButton() != MouseButton.PRIMARY) return;   // a drag also produces a click
+            if (!e.isStillSincePress() || e.getButton() != MouseButton.PRIMARY) return;
             if (paletteRef == null || toolbarRef == null) return;
 
             ComponentType comp = paletteRef.getSelected();
             ToolbarOptions tool = toolbarRef.getSelected();
 
             if (comp != null && comp != ComponentType.UNKNOWN) {
-                Point2D p = nodeLayer.sceneToLocal(e.getSceneX(), e.getSceneY());
+                Point2D p = contentGroup.sceneToLocal(e.getSceneX(), e.getSceneY());
                 controller.onElementPlaced(comp, p.getX(), p.getY());
             } else if (tool != null && tool != ToolbarOptions.Unknown && tool != ToolbarOptions.Wire) {
                 controller.optionSelected(tool, e.getX(), e.getY());
@@ -241,71 +256,102 @@ public class CircuitCanvas extends Pane {
         toolbar.setOnZoomOut(() -> viewportManager.zoomOut());
     }
 
-    public void zoomIn() {
-        viewportManager.zoomIn();
+    private void onViewResized() {
+        viewportManager.setAnchor(getWidth() / 2, getHeight() / 2);
+        drawGrid();
     }
 
-    public void zoomOut() {
-        viewportManager.zoomOut();
-    }
-    public void makeBackground() {
-        GraphicsContext gc = background.getGraphicsContext2D();
-        gc.setFill(Color.WHITE);
-        gc.fillRect(0, 0, background.getWidth(), background.getHeight());
+    /**
+     * Draws the dot grid in screen space for the part of the world that is currently visible.
+     * Only ever as big as the pane, so it can't exceed GPU texture limits.
+     */
+    private void drawGrid() {
+        double w = gridCanvas.getWidth();
+        double h = gridCanvas.getHeight();
+        GraphicsContext gc = gridCanvas.getGraphicsContext2D();
+        gc.clearRect(0, 0, w, h);
+        if (w <= 0 || h <= 0) return;
+
+        double zoom = viewportManager.getZoom();
+        double tx = viewportManager.getTranslateX();
+        double ty = viewportManager.getTranslateY();
+
+        // When zoomed far out, skip grid lines so dots never get denser than ~6 screen px.
+        int step = 1;
+        while (GRID_SIZE * step * zoom < 6) step *= 2;
+        double stepWorld = GRID_SIZE * step;
+
+        // visible world rectangle
+        double minWX = (0 - tx) / zoom, maxWX = (w - tx) / zoom;
+        double minWY = (0 - ty) / zoom, maxWY = (h - ty) / zoom;
+
+        gc.setFill(Color.GRAY);
+        double startX = Math.floor(minWX / stepWorld) * stepWorld;
+        double startY = Math.floor(minWY / stepWorld) * stepWorld;
+        for (double wx = startX; wx <= maxWX; wx += stepWorld) {
+            double sx = wx * zoom + tx;
+            for (double wy = startY; wy <= maxWY; wy += stepWorld) {
+                double sy = wy * zoom + ty;
+                gc.fillOval(sx - 1, sy - 1, 2, 2);
+            }
+        }
     }
 
     // ── Rendering ─────────────────────────────────────────────────────────────
 
     /**
-     * Full redraw. Called after every state change (element placed, wire added, selection changed, etc.).
+     * Full redraw of circuit elements. Called after any state change.
      */
     public void render() {
-        makeBackground();
         nodeLayer.getChildren().clear();
 
-        // 2. Wire segments
+        // 1. Wire segments (straight orthogonal lines)
         renderWireSegments();
 
-        // 3. Component icons (selection glow + drag handlers live here)
+        // 2. Component icons (selection glow + drag handlers)
         renderComponents();
 
-        // 4. Port dots (on top of icons so they are always visible)
+        // 3. Port dots (on top of icons)
         renderPorts();
 
-        // 5. Junction dots
+        // 4. Junction dots
         renderJunctions();
 
-        // 6. Re-add the preview line if one is active
+        // 5. Re-add preview line if active
         if (previewLine != null) {
             nodeLayer.getChildren().add(previewLine);
         }
     }
 
-    // ── Layer 2: Wire segments ─────────────────────────────────────────────────
+    // ── Layer 1: Wire segments ─────────────────────────────────────────────────
 
     private void renderWireSegments() {
         for (WireSegment seg : controller.getCircuit().getWireSegments()) {
-            Point2D bend = seg.getBendPoint();
             Polyline wire = new Polyline(
                     seg.getX1(), seg.getY1(),
-                    bend.getX(), bend.getY(),
                     seg.getX2(), seg.getY2());
-            wire.setStroke(COLOR_WIRE);
+
+            Color wireColor = switch (seg.getState()) {
+                case ON      -> Color.web("#00c800");   // bright green — active
+                case OFF     -> Color.web("#404040");   // dark gray    — inactive
+                case UNKNOWN -> Color.web("#000000");   // black        — unknown / undriven
+            };
+            wire.setStroke(wireColor);
             wire.setStrokeWidth(WIRE_WIDTH);
             wire.setFill(Color.TRANSPARENT);
-            wire.setMouseTransparent(true); // hit-testing done manually in controller
+            wire.setMouseTransparent(true);
             nodeLayer.getChildren().add(wire);
         }
     }
 
-    // ── Layer 3: Component icons ───────────────────────────────────────────────
+    // ── Layer 2: Component icons ───────────────────────────────────────────────
 
     private void renderComponents() {
         for (CircuitElement elem : controller.getCircuit().getElements().values()) {
             var icon = elem.getIconNode(iconRegistry);
             icon.setLayoutX(elem.getX());
             icon.setLayoutY(elem.getY());
-            icon.setUserData(elem.getId());   // maps a node back to its element (rubber band + drag)
+            icon.setUserData(elem.getId());
 
             if (controller.getSelection().isElementSelected(elem.getId())) {
                 icon.setEffect(new DropShadow(15, Color.CYAN));
@@ -313,12 +359,10 @@ public class CircuitCanvas extends Pane {
 
             icon.setOnMousePressed(ev -> {
                 if (ev.getButton() != MouseButton.PRIMARY || !isSelectToolActive()) return;
-                // pressing an already-selected icon drags the whole selection;
-                // pressing an unselected one drags just that icon
                 dragIds = controller.getSelection().isElementSelected(elem.getId())
                         ? controller.getSelection().getSelectedElements()
                         : Set.of(elem.getId());
-                Point2D p = nodeLayer.sceneToLocal(ev.getSceneX(), ev.getSceneY());
+                Point2D p = contentGroup.sceneToLocal(ev.getSceneX(), ev.getSceneY());
                 dragStartX = p.getX();
                 dragStartY = p.getY();
                 moving = false;
@@ -326,14 +370,14 @@ public class CircuitCanvas extends Pane {
 
             icon.setOnMouseDragged(ev -> {
                 if (!ev.isPrimaryButtonDown() || !isSelectToolActive() || dragIds.isEmpty()) return;
-                Point2D p = nodeLayer.sceneToLocal(ev.getSceneX(), ev.getSceneY());
+                Point2D p = contentGroup.sceneToLocal(ev.getSceneX(), ev.getSceneY());
                 double dx = p.getX() - dragStartX;
                 double dy = p.getY() - dragStartY;
-                if (!moving && Math.hypot(dx, dy) < 3) return;   // tiny jitter still counts as a click
+                if (!moving && Math.hypot(dx, dy) < 3) return;
                 moving = true;
                 for (Node n : nodeLayer.getChildren()) {
                     if (n.getUserData() instanceof String id && dragIds.contains(id)) {
-                        n.setTranslateX(dx);   // visual only, the model is untouched
+                        n.setTranslateX(dx);
                         n.setTranslateY(dy);
                     }
                 }
@@ -342,16 +386,16 @@ public class CircuitCanvas extends Pane {
 
             icon.setOnMouseReleased(ev -> {
                 if (!moving) return;
-                Point2D p = nodeLayer.sceneToLocal(ev.getSceneX(), ev.getSceneY());
+                Point2D p = contentGroup.sceneToLocal(ev.getSceneX(), ev.getSceneY());
                 double dx = p.getX() - dragStartX;
                 double dy = p.getY() - dragStartY;
-                controller.moveElements(dragIds, dx, dy);                    // commit once
+                controller.moveElements(dragIds, dx, dy);
                 if (!controller.getSelection().isElementSelected(elem.getId())) {
-                    controller.getSelection().selectElement(elem.getId(), false);  // dragged an unselected icon: select it
+                    controller.getSelection().selectElement(elem.getId(), false);
                 }
                 moving = false;
                 dragIds = Set.of();
-                render();                                                     // rebuild once, at the new positions
+                render();
                 ev.consume();
             });
 
@@ -374,16 +418,15 @@ public class CircuitCanvas extends Pane {
                 // Normal component selection
                 if (!isSelectToolActive()) return;
                 ev.consume();
-                boolean additive =
-                        ev.isShiftDown() || ev.isControlDown();
-                controller.getSelection()
-                        .selectElement(elem.getId(), additive);
+                if (!ev.isStillSincePress()) return;
+                boolean additive = ev.isShiftDown() || ev.isControlDown();
+                controller.getSelection().selectElement(elem.getId(), additive);
             });
             nodeLayer.getChildren().add(icon);
         }
     }
 
-    // ── Layer 4: Port dots ─────────────────────────────────────────────────────
+    // ── Layer 3: Port dots ─────────────────────────────────────────────────────
 
     private void renderPorts() {
         Circuit circuit = controller.getCircuit();
@@ -397,7 +440,7 @@ public class CircuitCanvas extends Pane {
                 dot.setFill(COLOR_PORT_IDLE);
                 dot.setStroke(Color.BLACK);
                 dot.setStrokeWidth(0.5);
-                dot.setUserData(elem.getId());   // so the dot moves along with its element while dragging
+                dot.setUserData(elem.getId());
 
                 dot.setOnMouseEntered(e -> {
                     dot.setFill(COLOR_PORT_HOVER);
@@ -413,7 +456,7 @@ public class CircuitCanvas extends Pane {
         }
     }
 
-    // ── Layer 5: Junction dots ─────────────────────────────────────────────────
+    // ── Layer 4: Junction dots ─────────────────────────────────────────────────
 
     private void renderJunctions() {
         for (PointNode node : controller.getCircuit().getPointNodes()) {
@@ -448,5 +491,9 @@ public class CircuitCanvas extends Pane {
 
     private boolean isWireToolActive() {
         return toolbarRef != null && toolbarRef.getSelected() == ToolbarOptions.Wire;
+    }
+
+    public ViewportManager getViewportManager() {
+        return viewportManager;
     }
 }

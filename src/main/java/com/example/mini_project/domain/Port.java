@@ -6,7 +6,6 @@ public class Port {
     private final PortType type;
     private final CircuitElement owner;
     private SignalState value = SignalState.UNKNOWN;
-    private Wire connectedWire; // null if not connected
 
     /**
      * Pixel offset from the owner component's top-left corner (canvas space).
@@ -41,16 +40,10 @@ public class Port {
 
     public void setValue(SignalState value) { this.value = value; }
 
-    // ── Wire connection ───────────────────────────────────────────────────────
-
-    public Wire getConnectedWire() { return connectedWire; }
-
-    public void setConnectedWire(Wire connectedWire) { this.connectedWire = connectedWire; }
-
-    public boolean isConnected() { return connectedWire != null; }
+    // ── Signal propagation ───────────────────────────────────────────────────
 
     public void propagate() {
-        // Pushes this port's current value onto its connected wire, if any
+        // Pushes this port's current value onto connected wire segments (handled by simulation engine)
     }
 
     // ── Visual position ───────────────────────────────────────────────────────
