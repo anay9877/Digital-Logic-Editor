@@ -7,9 +7,10 @@ import javafx.scene.Scene;
 import javafx.scene.control.ToolBar;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
-
+import javafx.stage.FileChooser;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseButton;
 public class EditorWindow extends Application {
 
     @Override
@@ -84,7 +85,7 @@ public class EditorWindow extends Application {
         javafx.scene.control.MenuItem openItem = new javafx.scene.control.MenuItem("Open / Load...");
         openItem.setAccelerator(new javafx.scene.input.KeyCodeCombination(javafx.scene.input.KeyCode.O, javafx.scene.input.KeyCombination.CONTROL_DOWN));
         openItem.setOnAction(e -> {
-            javafx.stage.FileChooser fc = new javafx.stage.FileChooser();
+            FileChooser fc = new FileChooser();
             fc.setTitle("Open Circuit JSON");
             fc.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("Circuit Files (*.json)", "*.json"));
             java.io.File file = fc.showOpenDialog(stage);

@@ -496,4 +496,10 @@ public class CircuitCanvas extends Pane {
     public ViewportManager getViewportManager() {
         return viewportManager;
     }
+    public void zoomIn() {
+        viewportManager.zoomIn();
+    }
+    public void zoomOut() {
+        viewportManager.zoomOut();
+    }
 }
