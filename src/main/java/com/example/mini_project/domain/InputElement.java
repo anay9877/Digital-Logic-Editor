@@ -11,6 +11,7 @@ public class InputElement extends CircuitElement {
     public InputElement(String id, double x, double y) {
         super(id, x, y);
         outputPort = new Port(id + "-out", PortType.OUTPUT, this);
+        outputPort.setValue(value);
         applyPortOffsets();
     }
 
@@ -25,12 +26,14 @@ public class InputElement extends CircuitElement {
     }
 
     public void toggle() {
-        // for toggling on and off
-        value = (value == SignalState.ON) ? SignalState.OFF : SignalState.ON;
+        setValue((value == SignalState.ON) ? SignalState.OFF : SignalState.ON);
     }
 
     public SignalState getValue()  { return value; }
-    public void setValue(SignalState value) { this.value = value; }
+    public void setValue(SignalState value) {
+        this.value = value;
+        outputPort.setValue(value);
+    }
     public Port getOutputPort()    { return outputPort; }
 
     @Override

@@ -13,6 +13,7 @@ import java.util.Map;
 public class EditorController {
 
     private final Circuit circuit;
+    private final CircuitSimulator simulator = new CircuitSimulator();
     private final Map<ComponentType, Integer> counters  = new HashMap<>();
     private final SelectionManager            selection = new SelectionManager();
 
@@ -69,6 +70,12 @@ public class EditorController {
         counters.put(type, n);
         String id = type.name() + "-" + n;
         circuit.addElement(type.create(id, CircuitCanvas.snap(x), CircuitCanvas.snap(y)));
+        notifyRender();
+    }
+
+    public void toggleInput(InputElement input) {
+        input.toggle();
+        notifyRender();
     }
 
     // ── Toolbar option dispatch ───────────────────────────────────────────────
@@ -525,6 +532,7 @@ public class EditorController {
     public void redo() { }
 
     public void notifyRender() {
+        simulator.simulate(circuit);
         if (canvas != null) canvas.render();
     }
 }

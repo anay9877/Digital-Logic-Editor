@@ -5,7 +5,11 @@ public class NotGate extends Gate {
 
     @Override
     public SignalState evaluate() {
-        return isOn(inputPorts.get(0)) ? SignalState.OFF : SignalState.ON;
+        return switch (inputPorts.get(0).getValue()) {
+            case ON -> SignalState.OFF;
+            case OFF -> SignalState.ON;
+            case UNKNOWN -> SignalState.UNKNOWN;
+        };
     }
 
     @Override

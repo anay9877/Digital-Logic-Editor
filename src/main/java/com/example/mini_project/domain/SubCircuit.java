@@ -145,21 +145,18 @@ public class SubCircuit {
             segA = WireSegment.portToNode(
                     existingSeg.getStartPort(),
                     existingSeg.getX1(), existingSeg.getY1(),
-                    junction,
-                    existingSeg.isHorizontalFirst());
+                    junction);
         } else {
-            segA = WireSegment.nodeToNode(existingSeg.getStartNode(), junction,
-                    existingSeg.isHorizontalFirst());
+            segA = WireSegment.nodeToNode(existingSeg.getStartNode(), junction);
         }
 
         if (existingSeg.getEndPort() != null) {
             segB = WireSegment.nodeToPort(
                     junction,
                     existingSeg.getEndPort(),
-                    existingSeg.getX2(), existingSeg.getY2(),
-                    true);
+                    existingSeg.getX2(), existingSeg.getY2());
         } else {
-            segB = WireSegment.nodeToNode(junction, existingSeg.getEndNode(), true);
+            segB = WireSegment.nodeToNode(junction, existingSeg.getEndNode());
         }
 
         removeWireSegment(existingSeg);

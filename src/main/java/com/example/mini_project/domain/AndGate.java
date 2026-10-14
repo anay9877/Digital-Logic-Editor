@@ -7,7 +7,11 @@ public class AndGate extends Gate {
 
     @Override
     public SignalState evaluate() {
-        return (isOn(inputPorts.get(0)) && isOn(inputPorts.get(1))) ? SignalState.ON : SignalState.OFF;
+        SignalState left = inputPorts.get(0).getValue();
+        SignalState right = inputPorts.get(1).getValue();
+        if (left == SignalState.OFF || right == SignalState.OFF) return SignalState.OFF;
+        if (left == SignalState.ON && right == SignalState.ON) return SignalState.ON;
+        return SignalState.UNKNOWN;
     }
 
     @Override
