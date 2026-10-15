@@ -9,12 +9,12 @@ import java.util.Map;
  * A connected component of the circuit built from the segment-based connectivity graph.
  *
  * This class intentionally does not use the legacy Wire model. A circuit is represented by
- * CircuitElements, Port connections, PointNodes, and WireSegments instead of a separate Wire
+ * Gates, Port connections, PointNodes, and WireSegments instead of a separate Wire
  * abstraction. This keeps sub-circuit detection and routing consistent with the current model.
  */
 public class SubCircuit {
     private final String id;
-    private final Map<String, CircuitElement> elements = new HashMap<>();
+    private final Map<String, Gate> gates = new HashMap<>();
     private final List<WireSegment> wireSegments = new ArrayList<>();
     private final List<PointNode> pointNodes = new ArrayList<>();
     private final List<InputElement> inputs = new ArrayList<>();
@@ -30,19 +30,20 @@ public class SubCircuit {
 
     public void addElement(CircuitElement e) {
         if (e == null) return;
-        if (elements.containsKey(e.getId())) {
+        if (gates.containsKey(e.getId())) {
             return;
         }
-        elements.put(e.getId(), e);
         if (e instanceof InputElement input && !inputs.contains(input)) {
             inputs.add(input);
         } else if (e instanceof OutputElement output && !outputs.contains(output)) {
             outputs.add(output);
+        } else if (e instanceof Gate gate) {
+            gates.put(e.getId(), e);
         }
     }
 
     public void removeElement(String id) {
-        CircuitElement removed = elements.remove(id);
+        Gate removed = gates.remove(id);
         if (removed == null) {
             return;
         }
@@ -103,19 +104,19 @@ public class SubCircuit {
     }
 
     public boolean containsElement(String id) {
-        return elements.containsKey(id);
+        return gates.containsKey(id);
     }
 
     public boolean containsElement(CircuitElement element) {
-        return element != null && elements.containsKey(element.getId());
+        return element != null && gates.containsKey(element.getId());
     }
 
-    public CircuitElement getElement(String id) {
-        return elements.get(id);
+    public Gate getElement(String id) {
+        return gates.get(id);
     }
 
-    public Map<String, CircuitElement> getElements() {
-        return elements;
+    public Map<String, Gate> getgates() {
+        return gates;
     }
 
     public List<WireSegment> getWireSegments() {

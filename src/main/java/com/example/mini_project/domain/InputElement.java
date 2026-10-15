@@ -11,7 +11,6 @@ public class InputElement extends CircuitElement {
     public InputElement(String id, double x, double y) {
         super(id, x, y);
         outputPort = new Port(id + "-out", PortType.OUTPUT, this);
-        outputPort.setValue(value);
         applyPortOffsets();
     }
 
@@ -30,6 +29,7 @@ public class InputElement extends CircuitElement {
     }
 
     public SignalState getValue()  { return value; }
+    
     public void setValue(SignalState value) {
         this.value = value;
         outputPort.setValue(value);

@@ -31,7 +31,7 @@ public class WireSegment {
 
     /**
      * Electrical state of this segment as reported by the simulation engine.
-     * Defaults to UNKNOWN until the simulation runs and assigns a net value.
+    * Defaults to UNKNOWN until the simulation assigns a value.
      */
     private SignalState state = SignalState.UNKNOWN;
 
@@ -105,34 +105,72 @@ public class WireSegment {
 
     // ── Getters ───────────────────────────────────────────────────────────────
 
-    public String getId()  { return id; }
+    public String getId()  { 
+        return id; 
+    }
 
-    public double getX1()  { return x1; }
-    public double getY1()  { return y1; }
-    public double getX2()  { return x2; }
-    public double getY2()  { return y2; }
+    public double getX1()  { 
+        return x1; 
+    }
+    public double getY1()  { 
+        return y1; 
+    }
+    public double getX2()  { 
+        return x2; 
+    }
+    public double getY2()  { 
+        return y2; 
+    }
 
-    public Port      getStartPort() { return startPort; }
-    public PointNode getStartNode() { return startNode; }
-    public Port      getEndPort()   { return endPort; }
-    public PointNode getEndNode()   { return endNode; }
+    public Port getStartPort() { 
+        return startPort; 
+    }
+    public PointNode getStartNode() { 
+        return startNode; 
+    }
+    public Port getEndPort() { 
+        return endPort; 
+    }
+    public PointNode getEndNode() { 
+        return endNode; 
+    }
 
-    public void setStartPort(Port p)      { this.startPort = p; this.startNode = null; }
-    public void setStartNode(PointNode n) { this.startNode = n; this.startPort = null; }
-    public void setEndPort(Port p)        { this.endPort = p; this.endNode = null; }
-    public void setEndNode(PointNode n)   { this.endNode = n; this.endPort = null; }
+    public void setStartPort(Port p) {
+         this.startPort = p; this.startNode = null; 
+    }
+    public void setStartNode(PointNode n) { 
+        this.startNode = n; this.startPort = null; 
+    }
+    public void setEndPort(Port p) { 
+        this.endPort = p; this.endNode = null; 
+    }
+    public void setEndNode(PointNode n) { 
+        this.endNode = n; this.endPort = null; 
+    }
 
     // ── Signal state ──────────────────────────────────────────────────────────
 
-    public SignalState getState() { return state; }
-    public void setState(SignalState state) { this.state = state; }
+    public SignalState getState() {
+         return state; 
+    }
+    public void setState(SignalState state) {
+         this.state = state;
+    }
 
     // ── Mutators (called when endpoints move or segment is extended) ──────────
 
-    public void setX1(double x1) { this.x1 = x1; }
-    public void setY1(double y1) { this.y1 = y1; }
-    public void setX2(double x2) { this.x2 = x2; }
-    public void setY2(double y2) { this.y2 = y2; }
+    public void setX1(double x1) { 
+        this.x1 = x1; 
+    }
+    public void setY1(double y1) { 
+        this.y1 = y1; 
+    }
+    public void setX2(double x2) { 
+        this.x2 = x2; 
+    }
+    public void setY2(double y2) { 
+        this.y2 = y2; 
+    }
 
     // ── Utility ───────────────────────────────────────────────────────────────
 

@@ -532,7 +532,7 @@ public class EditorController {
     public void redo() { }
 
     public void notifyRender() {
-        simulator.simulate(circuit);
+        simulator.simulate(circuit); //added by prajwal (might not be needed)
         if (canvas != null) canvas.render();
     }
 }
