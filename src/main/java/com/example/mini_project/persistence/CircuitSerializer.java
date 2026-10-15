@@ -234,6 +234,9 @@ public class CircuitSerializer {
 
     // ── SVG Export & Import ───────────────────────────────────────────────────
 
+    // We need to add JSON Script of circuit and individual wires, junction dotes and components
+    // The Json script is needed to reconstruct the circuit while the data of others are needed to
+    // show the actual data visually in svg file when opened!!
     public static String toSvg(Circuit circuit, ViewportManager viewport) {
         String json = toJson(circuit, viewport);
 
@@ -325,17 +328,17 @@ public class CircuitSerializer {
         }
 
         // Try extracting from <metadata>
-        Matcher metaMatcher = METADATA_TAG_PATTERN.matcher(svgContent);
-        if (metaMatcher.find()) {
-            String json = metaMatcher.group(1).trim();
-            fromJson(json, circuit, viewport, controller);
-            return;
-        }
+//        Matcher metaMatcher = METADATA_TAG_PATTERN.matcher(svgContent);
+//        if (metaMatcher.find()) {
+//            String json = metaMatcher.group(1).trim();
+//            fromJson(json, circuit, viewport, controller);
+//            return;
+//        }
 
         throw new IllegalArgumentException("No circuit metadata found in the SVG file.");
     }
 
-    // ── File Operations ───────────────────────────────────────────────────────
+    // File Operations
     // saveJson similar to importSVG
     // loadJson somewhat similar to exportSVG
 
@@ -359,8 +362,9 @@ public class CircuitSerializer {
         fromSvg(svg, circuit, viewport, controller);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // Helper functions
 
+    // AND-1-in0 -> in0
     private static String extractLocalPortId(String fullPortId) {
         int idx = fullPortId.lastIndexOf('-');
         return idx >= 0 ? fullPortId.substring(idx + 1) : fullPortId;
@@ -371,15 +375,6 @@ public class CircuitSerializer {
         Port p = elem.findPort(elem.getId() + "-" + localPortId);
         if (p != null) return p;
 
-        if (elem instanceof Gate gate) {
-            for (Port port : gate.getAllPorts()) {
-                if (port.getId().endsWith("-" + localPortId)) return port;
-            }
-        } else if (elem instanceof InputElement ie) {
-            if (ie.getOutputPort().getId().endsWith("-" + localPortId)) return ie.getOutputPort();
-        } else if (elem instanceof OutputElement oe) {
-            if (oe.getInputPort().getId().endsWith("-" + localPortId)) return oe.getInputPort();
-        }
         return null;
     }
 

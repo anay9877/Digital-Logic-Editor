@@ -29,9 +29,17 @@ public class InputElement extends CircuitElement {
         value = (value == SignalState.ON) ? SignalState.OFF : SignalState.ON;
     }
 
-    public SignalState getValue()  { return value; }
-    public void setValue(SignalState value) { this.value = value; }
-    public Port getOutputPort()    { return outputPort; }
+    public SignalState getValue() {
+        return value;
+    }
+
+    public void setValue(SignalState value) {
+        this.value = value;
+    }
+
+    public Port getOutputPort() {
+        return outputPort;
+    }
 
     @Override
     public Port findPort(String portId) {

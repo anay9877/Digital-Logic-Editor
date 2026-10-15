@@ -22,7 +22,7 @@ public class CircuitDto {
         public String type;
         public double x;
         public double y;
-        // These are the circuit element properties
+        // These are the circuit element properties(State!!)
         public Map<String, String> props;
 
         public ElementDto() {}

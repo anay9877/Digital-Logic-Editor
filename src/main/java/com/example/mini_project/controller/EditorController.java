@@ -16,7 +16,7 @@ public class EditorController {
     private final Map<ComponentType, Integer> counters = new HashMap<>();
     private final SelectionManager selection = new SelectionManager();
 
-    // ── Wire drawing state ────────────────────────────────────────────────────
+    // Wire drawing state
     private boolean drawingWire = false;
     private Port dragStartPort;
     private PointNode dragStartNode;
@@ -24,12 +24,7 @@ public class EditorController {
     private boolean horizontalFirst = true;
     private boolean bendDirectionLocked = false;
 
-    /**
-     * Canvas reference, set after construction via {@link #setCanvas}.
-     */
     private CircuitCanvas canvas;
-
-    // ── Constructor ───────────────────────────────────────────────────────────
 
     public EditorController(Circuit circuit) {
         this.circuit = circuit;
@@ -51,6 +46,7 @@ public class EditorController {
         return canvas;
     }
 
+    // Used for deletion of entire circuit
     public void newCircuit() {
         circuit.clear();
         counters.clear();
@@ -66,15 +62,10 @@ public class EditorController {
         notifyRender();
     }
 
+    // Used for generation of ids
     public void updateCounter(ComponentType type, int count) {
         counters.put(type, Math.max(counters.getOrDefault(type, 0), count));
     }
-
-    public void clearCounters() {
-        counters.clear();
-    }
-
-    // ── Element placement ─────────────────────────────────────────────────────
 
     public void onElementPlaced(ComponentType type, double x, double y) {
         int n = counters.getOrDefault(type, 0) + 1;
@@ -83,23 +74,18 @@ public class EditorController {
         circuit.addElement(type.create(id, CircuitCanvas.snap(x), CircuitCanvas.snap(y)));
     }
 
-    // ── Toolbar option dispatch ───────────────────────────────────────────────
-
+    // Tells which option is selected from toolbar(implemented just for select and delete)
     public void optionSelected(ToolbarOptions option, double x, double y) {
         switch (option) {
-            case Select -> handleSelect(x, y);
+            case Select -> selection.clear();
             case Delete -> handleDelete();
         }
-    }
-
-    private void handleSelect(double x, double y) {
-        selection.clear();
-        System.out.println("Selection cleared");
     }
 
     private void handleDelete() {
     }
 
+    // Move all the elements present which are passed by dx and dy
     public void moveElements(Collection<String> ids, double dx, double dy) {
         for (String id : ids) {
             CircuitElement e = circuit.getElement(id);
@@ -113,8 +99,7 @@ public class EditorController {
         notifyRender();
     }
 
-    // ── Wire drawing — called by CircuitCanvas mouse handlers ─────────────────
-
+    // Wire drawing — called by CircuitCanvas mouse handlers
     private static final double PORT_HIT_RADIUS = CircuitCanvas.GRID_SIZE * 1.5;  // 15px
     private static final double NODE_HIT_RADIUS = CircuitCanvas.GRID_SIZE * 1.5;  // 15px
     private static final double WIRE_HIT_THRESHOLD = CircuitCanvas.GRID_SIZE * 0.6;  // 6px
@@ -385,9 +370,8 @@ public class EditorController {
     // ── Hit-testing ───────────────────────────────────────────────────────────
 
     public Port findPortAt(double x, double y) {
-        SvgIconRegistry registry = new SvgIconRegistry();
         for (CircuitElement elem : circuit.getElements().values()) {
-            List<Port> ports = getAllPorts(elem, registry);
+            List<Port> ports = getAllPorts(elem);
             for (Port p : ports) {
                 if (Math.hypot(x - p.getAbsX(), y - p.getAbsY()) <= PORT_HIT_RADIUS) {
                     return p;
@@ -415,7 +399,7 @@ public class EditorController {
         return null;
     }
 
-    private List<Port> getAllPorts(CircuitElement elem, SvgIconRegistry registry) {
+    private List<Port> getAllPorts(CircuitElement elem) {
         List<Port> ports = new ArrayList<>();
         if (elem instanceof Gate gate) {
             ports.addAll(gate.getAllPorts());
@@ -431,7 +415,7 @@ public class EditorController {
 
     public void onComponentMoved(CircuitElement element) {
         SvgIconRegistry registry = new SvgIconRegistry();
-        List<Port> ports = getAllPorts(element, registry);
+        List<Port> ports = getAllPorts(element);
 
         for (Port p : ports) {
             double px = p.getAbsX();

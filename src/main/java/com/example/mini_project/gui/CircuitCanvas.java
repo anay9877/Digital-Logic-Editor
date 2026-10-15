@@ -23,7 +23,7 @@ import java.util.Set;
 /**
  * Mouse's left button  --> select / rubber band / drag elements / draw wires
  * Mouse's right button --> pan the view
- *
+ * <p>
  * The main drawing surface for the circuit editor.
  */
 public class CircuitCanvas extends Pane {
@@ -31,23 +31,30 @@ public class CircuitCanvas extends Pane {
     // ── Grid Constants & Snapping ─────────────────────────────────────────────
     public static final double GRID_SIZE = 20.0;
 
-    /** Rounds {@code v} to the nearest grid line. */
+    /**
+     * Rounds {@code v} to the nearest grid line.
+     */
     public static double snap(double v) {
         return Math.round(v / GRID_SIZE) * GRID_SIZE;
     }
 
-    public static double snapX(double x) { return snap(x); }
-    public static double snapY(double y) { return snap(y); }
+    public static double snapX(double x) {
+        return snap(x);
+    }
+
+    public static double snapY(double y) {
+        return snap(y);
+    }
 
     // ── Constants ─────────────────────────────────────────────────────────────
-    private static final double PORT_RADIUS     = 5.0;
+    private static final double PORT_RADIUS = 5.0;
     private static final double JUNCTION_RADIUS = 6.0;
-    private static final double WIRE_WIDTH      = 2.0;
+    private static final double WIRE_WIDTH = 2.0;
 
-    private static final Color COLOR_PORT_IDLE   = Color.web("#4caf50");
-    private static final Color COLOR_PORT_HOVER  = Color.web("#00e5ff");
-    private static final Color COLOR_JUNCTION    = Color.web("#000");
-    private static final Color COLOR_PREVIEW     = Color.web("#000");
+    private static final Color COLOR_PORT_IDLE = Color.web("#4caf50");
+    private static final Color COLOR_PORT_HOVER = Color.web("#00e5ff");
+    private static final Color COLOR_JUNCTION = Color.web("#000");
+    private static final Color COLOR_PREVIEW = Color.web("#000");
 
     // ── Fields ────────────────────────────────────────────────────────────────
     private final EditorController controller;
@@ -70,7 +77,9 @@ public class CircuitCanvas extends Pane {
     private double lastMousePosition_X;
     private double lastMousePosition_Y;
 
-    /** The live preview line shown while the user drags a wire. */
+    /**
+     * The live preview line shown while the user drags a wire.
+     */
     private Polyline previewLine = null;
 
     // Selection (rubber band)
@@ -207,7 +216,9 @@ public class CircuitCanvas extends Pane {
             controller.getSelection().selectElements(hits, e.isShiftDown() || e.isControlDown());
         });
 
-        // plain click
+        // plain click on Canvas
+        // If Palette is selected then place the element
+        // If controller is selected then
         setOnMouseClicked(e -> {
             if (!e.isStillSincePress() || e.getButton() != MouseButton.PRIMARY) return;
             if (paletteRef == null || toolbarRef == null) return;
@@ -325,8 +336,8 @@ public class CircuitCanvas extends Pane {
                     seg.getX2(), seg.getY2());
 
             Color wireColor = switch (seg.getState()) {
-                case ON      -> Color.web("#00c800");   // bright green — active
-                case OFF     -> Color.web("#404040");   // dark gray    — inactive
+                case ON -> Color.web("#00c800");   // bright green — active
+                case OFF -> Color.web("#404040");   // dark gray    — inactive
                 case UNKNOWN -> Color.web("#000000");   // black        — unknown / undriven
             };
             wire.setStroke(wireColor);
