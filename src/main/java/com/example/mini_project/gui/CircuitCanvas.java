@@ -419,6 +419,10 @@ public class CircuitCanvas extends Pane {
                 if (!isSelectToolActive()) return;
                 ev.consume();
                 if (!ev.isStillSincePress()) return;
+                if (elem instanceof InputElement input) {
+                    controller.toggleInput(input);
+                    return;
+                }
                 boolean additive = ev.isShiftDown() || ev.isControlDown();
                 controller.getSelection().selectElement(elem.getId(), additive);
             });

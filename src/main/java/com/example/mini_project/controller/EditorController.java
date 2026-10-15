@@ -3,6 +3,7 @@ package com.example.mini_project.controller;
 import com.example.mini_project.domain.*;
 import com.example.mini_project.gui.CircuitCanvas;
 import com.example.mini_project.gui.ToolbarOptions;
+import com.example.mini_project.validation.*;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -13,6 +14,7 @@ import java.util.Map;
 public class EditorController {
 
     private final Circuit circuit;
+    // private final CircuitSimulator simulator = new CircuitSimulator();
     private final Map<ComponentType, Integer> counters  = new HashMap<>();
     private final SelectionManager            selection = new SelectionManager();
 
@@ -20,6 +22,8 @@ public class EditorController {
     private boolean drawingWire = false;
     private Port dragStartPort;
     private PointNode dragStartNode;
+    private WireSegment dragStartSegment;
+    private final ConnectionValidator connectionValidator = new ConnectionValidator();
     private double dragStartX, dragStartY;
     private boolean horizontalFirst = true;
     private boolean bendDirectionLocked = false;
@@ -69,6 +73,12 @@ public class EditorController {
         counters.put(type, n);
         String id = type.name() + "-" + n;
         circuit.addElement(type.create(id, CircuitCanvas.snap(x), CircuitCanvas.snap(y)));
+        notifyRender();
+    }
+
+    public void toggleInput(InputElement input) {
+        input.toggle();
+        notifyRender();
     }
 
     // ── Toolbar option dispatch ───────────────────────────────────────────────
@@ -77,6 +87,7 @@ public class EditorController {
         switch (option){
             case Select -> handleSelect(x, y);
             case Delete -> handleDelete();
+            case Validate -> handleValidate();
         }
     }
 
@@ -88,6 +99,17 @@ public class EditorController {
     private void handleDelete(){
     }
 
+    private void handleValidate() {
+        CircuitValidator validator = new CircuitValidator();
+        boolean wiresValid = validator.validateDanglingWires(circuit);
+        boolean inputsValid = validator.validateInputPorts(circuit);
+        boolean iovalid = validator.validateInputsAndOutputs(circuit);
+        boolean logicValid = validator.validateDeadLogic(circuit);
+        boolean referencesValid = validator.validateWireReferences(circuit);
+
+        if (wiresValid && inputsValid && iovalid && logicValid && referencesValid) System.out.println("Circuit validation passed");
+        else System.err.println("Circuit validation failed");
+    }
     public void moveElements(Collection<String> ids, double dx, double dy){
         for(String id : ids){
             CircuitElement e = circuit.getElement(id);
@@ -111,7 +133,9 @@ public class EditorController {
     public void onWireMousePressed(double x, double y) {
         x = CircuitCanvas.snap(x);
         y = CircuitCanvas.snap(y);
-
+        dragStartNode = null;
+        dragStartPort = null;
+        dragStartSegment = null;
         // Try to hit a port first
         Port hitPort = findPortAt(x, y);
         if (hitPort != null) {
@@ -144,12 +168,16 @@ public class EditorController {
         // Try to hit the body of an existing WireSegment
         WireSegment hitSeg = findWireSegmentAt(x, y);
         if (hitSeg != null) {
-            PointNode junction = circuit.splitSegmentAtJunction(hitSeg, x, y);
-            dragStartPort       = null;
-            dragStartNode       = junction;
-            dragStartX          = CircuitCanvas.snap(junction.getX());
-            dragStartY          = CircuitCanvas.snap(junction.getY());
-            drawingWire         = true;
+            dragStartSegment = hitSeg;
+            if (hitSeg.isHorizontal()) {
+                dragStartX = Math.max(Math.min(hitSeg.getX1(), hitSeg.getX2()), Math.min(x, Math.max(hitSeg.getX1(), hitSeg.getX2())));
+                dragStartY = hitSeg.getY1();
+            } else {
+                dragStartX = hitSeg.getX1();
+                dragStartY = Math.max(Math.min(hitSeg.getY1(), hitSeg.getY2()), Math.min(y, Math.max(hitSeg.getY1(), hitSeg.getY2())));
+            }
+
+            drawingWire = true;
             bendDirectionLocked = false;
             return;
         }
@@ -193,9 +221,63 @@ public class EditorController {
 
         mouseX = CircuitCanvas.snap(mouseX);
         mouseY = CircuitCanvas.snap(mouseY);
+        if (mouseX == dragStartX && mouseY == dragStartY) {
+            dragStartSegment = null;
+            return;
+        }
+        // Identify what the user is trying to connect.
+        Port targetPort = findPortAt(mouseX, mouseY);
+        PointNode targetNode = null;
+        WireSegment targetSegment = null;
+        if (targetPort == null) {
+            targetNode = findNodeAt(mouseX, mouseY);
+        }
+        if (targetPort == null && targetNode == null) {
+            targetSegment = findWireSegmentAt(mouseX, mouseY);
+        }
+        if (targetPort == null && targetNode == null && targetSegment == null) {
+            System.err.println("CONNECTION REJECTED: Wire cannot end in empty space");
+            dragStartPort = null;
+            dragStartNode = null;
+            dragStartSegment = null;
+            return;
+        }
+        Object start = dragStartPort != null ? dragStartPort : dragStartNode != null ? dragStartNode : dragStartSegment;
+        Object end = targetPort != null ? targetPort : targetNode != null ? targetNode : targetSegment;
+        
+        // Validate before modifying the circuit.
+        String error = connectionValidator.checkWireGeometry(dragStartX, dragStartY, mouseX, mouseY);
+        if (error == null)
+            error = connectionValidator.checkInputToInput(start, end);
+        if (error == null) {
+            error = connectionValidator.checkInputAlreadyConnected(circuit, start, end);
+        }
+        if (error == null) {
+            error = connectionValidator.checkSingleDriver(circuit, start, end);
+        }
+        if (error == null) {
+            error = connectionValidator.checkCombinationalCycle(circuit, start, end);
+        }
+        if (error == null) {
+            error = connectionValidator.checkDuplicateConnection(circuit, start, end);
+        }
+        if (error != null) {
+            System.err.println("CONNECTION REJECTED: " + error);
+            dragStartPort = null;
+            dragStartNode = null;
+            dragStartSegment = null;
+            return;
+        }
 
-        if (mouseX == dragStartX && mouseY == dragStartY) return;
-
+        // Connection passed this validation.
+        // Only now may we split an existing starting wire.
+        if (dragStartSegment != null) {
+            dragStartNode = circuit.splitSegmentAtJunction(dragStartSegment, dragStartX, dragStartY);
+            dragStartPort = null;
+            dragStartSegment = null;
+            dragStartX = dragStartNode.getX();
+            dragStartY = dragStartNode.getY();
+        }
         boolean hasBend = (mouseX != dragStartX) && (mouseY != dragStartY);
         double bendX = horizontalFirst ? mouseX : dragStartX;
         double bendY = horizontalFirst ? dragStartY : mouseY;
@@ -525,6 +607,7 @@ public class EditorController {
     public void redo() { }
 
     public void notifyRender() {
+        // simulator.simulate(circuit); //added by prajwal (might not be needed)
         if (canvas != null) canvas.render();
     }
 }

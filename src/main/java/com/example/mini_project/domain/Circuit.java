@@ -2,10 +2,16 @@ package com.example.mini_project.domain;
 
 import com.example.mini_project.gui.CircuitCanvas;
 
+import com.example.mini_project.gui.CircuitCanvas;
+
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class Circuit {
 
@@ -134,4 +140,109 @@ public class Circuit {
 
         return junction;
     }
+
+    /**
+     * Builds a list of connected sub-circuits by traversing the graph formed by
+     * circuit elements and point nodes connected through wire segments.
+     */
+    public List<SubCircuit> splitIntoDisjointSubCircuits() {
+        List<SubCircuit> subCircuits = new ArrayList<>();
+        Map<String, Set<String>> adjacency = new HashMap<>();
+        Set<String> visitedVertices = new HashSet<>();
+
+        for (CircuitElement element : elements.values()) {
+            adjacency.computeIfAbsent(element.getId(), key -> new HashSet<>());
+        }
+        for (PointNode node : pointNodes) {
+            adjacency.computeIfAbsent(node.getId(), key -> new HashSet<>());
+        }
+        for (WireSegment segment : wireSegments) {
+            String startVertex = null;
+            String endVertex = null;
+
+            if (segment.getStartPort() != null) {
+                startVertex = segment.getStartPort().getOwner().getId();
+            } else if (segment.getStartNode() != null) {
+                startVertex = segment.getStartNode().getId();
+            }
+
+            if (segment.getEndPort() != null) {
+                endVertex = segment.getEndPort().getOwner().getId();
+            } else if (segment.getEndNode() != null) {
+                endVertex = segment.getEndNode().getId();
+            }
+
+            if (startVertex != null && endVertex != null) {
+                adjacency.computeIfAbsent(startVertex, key -> new HashSet<>()).add(endVertex);
+                adjacency.computeIfAbsent(endVertex, key -> new HashSet<>()).add(startVertex);
+            }
+        }
+
+        for (String elementId : elements.keySet()) {
+            if (visitedVertices.contains(elementId)) {
+                continue;
+            }
+
+            SubCircuit subCircuit = new SubCircuit("subcircuit-" + (subCircuits.size() + 1));
+            Deque<String> queue = new ArrayDeque<>();
+            Set<String> componentVertices = new HashSet<>();
+
+            queue.add(elementId);
+            visitedVertices.add(elementId);
+
+            while (!queue.isEmpty()) {
+                String current = queue.removeFirst();
+                componentVertices.add(current);
+                for (String neighbor : adjacency.getOrDefault(current, Set.of())) {
+                    if (!visitedVertices.contains(neighbor)) {
+                        visitedVertices.add(neighbor);
+                        queue.addLast(neighbor);
+                    }
+                }
+            }
+
+            for (String currentId : componentVertices) {
+                if (elements.containsKey(currentId)) {
+                    subCircuit.addElement(elements.get(currentId));
+                }
+            }
+
+            for (WireSegment segment : wireSegments) {
+                String startVertex = null;
+                String endVertex = null;
+
+                if (segment.getStartPort() != null) {
+                    startVertex = segment.getStartPort().getOwner().getId();
+                } else if (segment.getStartNode() != null) {
+                    startVertex = segment.getStartNode().getId();
+                }
+
+                if (segment.getEndPort() != null) {
+                    endVertex = segment.getEndPort().getOwner().getId();
+                } else if (segment.getEndNode() != null) {
+                    endVertex = segment.getEndNode().getId();
+                }
+
+                if (startVertex != null && endVertex != null) {
+                    boolean touchesComponent = componentVertices.contains(startVertex)
+                            || componentVertices.contains(endVertex);
+                    if (touchesComponent) {
+                        subCircuit.addWireSegment(segment);
+                    }
+                }
+            }
+
+            for (PointNode node : pointNodes) {
+                if (componentVertices.contains(node.getId())) {
+                    subCircuit.addPointNode(node);
+                }
+            }
+
+            subCircuits.add(subCircuit);
+        }
+
+        return subCircuits;
+    }
+
+
 }

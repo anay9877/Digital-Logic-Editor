@@ -5,7 +5,11 @@ public class NorGate extends Gate {
 
     @Override
     public SignalState evaluate() {
-        return (isOn(inputPorts.get(0)) || isOn(inputPorts.get(1))) ? SignalState.OFF : SignalState.ON;
+        SignalState left = inputPorts.get(0).getValue();
+        SignalState right = inputPorts.get(1).getValue();
+        if (left == SignalState.ON || right == SignalState.ON) return SignalState.OFF;
+        if (left == SignalState.OFF && right == SignalState.OFF) return SignalState.ON;
+        return SignalState.UNKNOWN;
     }
 
     @Override

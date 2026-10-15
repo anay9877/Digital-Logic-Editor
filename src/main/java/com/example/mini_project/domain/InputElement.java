@@ -26,13 +26,15 @@ public class InputElement extends CircuitElement {
     }
 
     public void toggle() {
-        // for toggling on and off
-        value = (value == SignalState.ON) ? SignalState.OFF : SignalState.ON;
-        outputPort.setValue(value);
+        setValue((value == SignalState.ON) ? SignalState.OFF : SignalState.ON);
     }
 
     public SignalState getValue()  { return value; }
-    public void setValue(SignalState value) { this.value = value; }
+    
+    public void setValue(SignalState value) {
+        this.value = value;
+        outputPort.setValue(value);
+    }
     public Port getOutputPort()    { return outputPort; }
 
     @Override

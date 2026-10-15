@@ -27,6 +27,10 @@ public class OutputElement extends CircuitElement {
     public SignalState getValue() { return inputPort.getValue(); }
     public Port getInputPort()    { return inputPort; }
 
+    public void setValue(){
+        this.value = inputPort.getValue();
+    }
+
     @Override
     public Port findPort(String portId) {
         return inputPort.getId().equals(portId) ? inputPort : null;

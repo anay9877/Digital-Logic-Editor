@@ -75,10 +75,6 @@ public abstract class Gate extends CircuitElement {
         return all;
     }
 
-    protected boolean isOn(Port p) {
-        return p.getValue() == SignalState.ON;
-    }
-
     @Override
     public Node getIconNode(SvgIconRegistry registry) {
         return registry.createIcon(gateType());

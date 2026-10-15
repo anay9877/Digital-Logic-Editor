@@ -5,7 +5,10 @@ public class XorGate extends Gate {
 
     @Override
     public SignalState evaluate() {
-        return (isOn(inputPorts.get(0)) ^ isOn(inputPorts.get(1))) ? SignalState.ON : SignalState.OFF;
+        SignalState left = inputPorts.get(0).getValue();
+        SignalState right = inputPorts.get(1).getValue();
+        if (left == SignalState.UNKNOWN || right == SignalState.UNKNOWN) return SignalState.UNKNOWN;
+        return left != right ? SignalState.ON : SignalState.OFF;
     }
 
     @Override
