@@ -35,28 +35,42 @@ public class Circuit {
     }
 
     public boolean removeElement(String id) {
-        if (elements.remove(id) == null) return false;   // unknown or already deleted
+        if (elements.remove(id) == null) return false;        // unknown or already deleted
 
-        // Cascade-delete wires whose start or end PORT belongs to this element
-        wireSegments.removeIf(seg -> {
-            boolean startBelongs = seg.getStartPort() != null
-                    && seg.getStartPort().getOwner().getId().equals(id);
-            boolean endBelongs   = seg.getEndPort() != null
-                    && seg.getEndPort().getOwner().getId().equals(id);
-            if (startBelongs || endBelongs) {
-                if (seg.getStartNode() != null) seg.getStartNode().removeSegment(seg);
-                if (seg.getEndNode()   != null) seg.getEndNode().removeSegment(seg);
-                return true;
+        // 1. Seeds: wires whose start/end PORT belongs to the removed element
+        Set<WireSegment> doomed = new HashSet<>();
+        Deque<WireSegment> queue = new ArrayDeque<>();
+        for (WireSegment seg : wireSegments) {
+            if (belongsTo(seg.getStartPort(), id) || belongsTo(seg.getEndPort(), id)) {
+                if (doomed.add(seg)) queue.add(seg);
             }
-            return false;
-        });
+        }
 
-        // Prune PointNodes left with no segments
+        // 2. BFS: spread through PointNodes to every connected segment
+        while (!queue.isEmpty()) {
+            WireSegment s = queue.poll();
+            for (PointNode n : new PointNode[] { s.getStartNode(), s.getEndNode() }) {
+                if (n == null) continue;                       // that end is a Port, so the search stops there
+                // if (n.isJunction()) continue;               // optional: see "Choice to confirm" below
+                for (WireSegment next : n.getConnectedSegments()) {
+                    if (doomed.add(next)) queue.add(next);     // add() is false if already visited
+                }
+            }
+        }
+
+        // 3. Delete everything found, then fix the nodes' bookkeeping
+        wireSegments.removeAll(doomed);
+        for (WireSegment s : doomed) {
+            if (s.getStartNode() != null) s.getStartNode().removeSegment(s);
+            if (s.getEndNode()   != null) s.getEndNode().removeSegment(s);
+        }
         pointNodes.removeIf(n -> n.getConnectedSegments().isEmpty());
         return true;
     }
 
-    // ── Wire Segments ─────────────────────────────────────────────────────────
+    private static boolean belongsTo(Port p, String elementId) {
+        return p != null && p.getOwner().getId().equals(elementId);
+    }    // ── Wire Segments ─────────────────────────────────────────────────────────
 
     public List<WireSegment> getWireSegments() { return wireSegments; }
 
