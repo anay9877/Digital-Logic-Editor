@@ -1,5 +1,4 @@
 package com.example.mini_project.gui;
-
 import javafx.scene.Group;
 import javafx.scene.transform.Scale;
 
@@ -33,9 +32,13 @@ public class ViewportManager {
         view.getTransforms().add(scale);
     }
 
-    public void setOnChange(Runnable r) { this.onChange = r == null ? () -> {} : r; }
+    public void setOnChange(Runnable r) {
+        this.onChange = r == null ? () -> {} : r;
+    }
 
-    public void setAnchor(double x, double y) { this.anchorX = x; this.anchorY = y; }
+    public void setAnchor(double x, double y) {
+        this.anchorX = x; this.anchorY = y;
+    }
 
     private void apply() {
         scale.setX(zoom);
@@ -57,12 +60,22 @@ public class ViewportManager {
         apply();
     }
 
-    public void zoomIn()  { zoomTo(zoom + ZOOM_STEP); }
-    public void zoomOut() { zoomTo(zoom - ZOOM_STEP); }
+    public void zoomIn() {
+        zoomTo(zoom + ZOOM_STEP);
+    }
+    public void zoomOut() {
+        zoomTo(zoom - ZOOM_STEP);
+    }
 
-    public double getZoom()       { return zoom; }
-    public double getTranslateX() { return translateX; }
-    public double getTranslateY() { return translateY; }
+    public double getZoom() {
+        return zoom;
+    }
+    public double getTranslateX() {
+        return translateX;
+    }
+    public double getTranslateY() {
+        return translateY;
+    }
 
     public void translate(double dx, double dy) {
         translateX += dx;

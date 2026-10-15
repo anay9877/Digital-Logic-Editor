@@ -32,6 +32,10 @@ public class OutputElement extends CircuitElement {
         return inputPort;
     }
 
+    public void setValue(){
+        this.value = inputPort.getValue();
+    }
+
     @Override
     public Port findPort(String portId) {
         return inputPort.getId().equals(portId) ? inputPort : null;
