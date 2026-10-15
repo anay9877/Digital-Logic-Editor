@@ -22,7 +22,8 @@ public class SelectionManager {
     }
 
     public void selectElements(Collection<String> ids, boolean additive){
-        if(!additive) clearSilently();
+        if(!additive) 
+        clearSilently();
         selectedElements.addAll(ids);
         fire();
     }

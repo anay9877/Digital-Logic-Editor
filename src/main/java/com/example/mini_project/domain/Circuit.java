@@ -95,7 +95,9 @@ public class Circuit {
         queue.add(start);
         while (!queue.isEmpty()) {
             WireSegment s = queue.poll();
-            for (PointNode n : new PointNode[] { s.getStartNode(), s.getEndNode() }) {
+            for (PointNode n : new PointNode[] { 
+                s.getStartNode(), s.getEndNode() 
+            }) {
                 if (n == null) continue;                    // that end is a port: stop
                 for (WireSegment next : n.getConnectedSegments()) {
                     if (found.add(next)) queue.add(next);
@@ -110,12 +112,19 @@ public class Circuit {
         if (ids.isEmpty()) return 0;
         List<WireSegment> removed = new ArrayList<>();
         wireSegments.removeIf(seg -> {
-            if (ids.contains(seg.getId())) { removed.add(seg); return true; }
+            if (ids.contains(seg.getId())) { 
+                removed.add(seg); 
+                return true; 
+            }
             return false;
         });
         for (WireSegment seg : removed) {                   // keep each node's list + junction flag correct
-            if (seg.getStartNode() != null) seg.getStartNode().removeSegment(seg);
-            if (seg.getEndNode()   != null) seg.getEndNode().removeSegment(seg);
+            if (seg.getStartNode() != null) {
+                seg.getStartNode().removeSegment(seg);
+            }
+            if (seg.getEndNode()   != null) {
+                seg.getEndNode().removeSegment(seg);
+            }
         }
         pointNodes.removeIf(n -> n.getConnectedSegments().isEmpty());   // prune orphan nodes
         return removed.size();

@@ -303,12 +303,16 @@ public class EditorController {
     public void onSelectPoint(double x, double y, boolean additive, boolean wholeWire) {
         WireSegment hit = findNearestWire(x, y);
         if (hit == null) {
-            if (!additive) selection.clear();          // same behaviour as the old handleSelect
+            if (!additive) { 
+                selection.clear();          // same behaviour as the old handleSelect
+            }
             return;
         }
         if (wholeWire) {
             List<String> ids = new ArrayList<>();
-            for (WireSegment s : circuit.getConnectedWires(hit)) ids.add(s.getId());
+            for (WireSegment s : circuit.getConnectedWires(hit)) {
+                ids.add(s.getId());
+            }
             selection.selectWires(ids, additive);
         } else {
             selection.selectWire(hit.getId(), additive);
