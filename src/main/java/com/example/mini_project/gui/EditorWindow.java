@@ -48,6 +48,9 @@ public class EditorWindow extends Application {
         scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
             if (e.getCode() == KeyCode.ESCAPE) {
                 controller.getSelection().clear();
+            } else if (e.getCode() == KeyCode.DELETE || e.getCode() == KeyCode.BACK_SPACE) { //deletion ce
+                controller.deleteSelected();
+                e.consume();
             }
         });
         stage.setScene(scene);

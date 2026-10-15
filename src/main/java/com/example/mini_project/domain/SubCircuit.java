@@ -38,7 +38,7 @@ public class SubCircuit {
         } else if (e instanceof OutputElement output && !outputs.contains(output)) {
             outputs.add(output);
         } else if (e instanceof Gate gate) {
-            gates.put(e.getId(), e);
+            gates.put(e.getId(), gate);
         }
     }
 

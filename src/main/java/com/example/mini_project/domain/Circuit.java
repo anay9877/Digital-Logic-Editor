@@ -34,26 +34,26 @@ public class Circuit {
         pointNodes.clear();
     }
 
-    public void removeElement(String id) {
-        // Remove the element
-        elements.remove(id);
-        // Cascade-delete any wire segment whose start or end port belongs to
-        // the removed element, so dangling wires never exist.
+    public boolean removeElement(String id) {
+        if (elements.remove(id) == null) return false;   // unknown or already deleted
+
+        // Cascade-delete wires whose start or end PORT belongs to this element
         wireSegments.removeIf(seg -> {
             boolean startBelongs = seg.getStartPort() != null
                     && seg.getStartPort().getOwner().getId().equals(id);
             boolean endBelongs   = seg.getEndPort() != null
                     && seg.getEndPort().getOwner().getId().equals(id);
             if (startBelongs || endBelongs) {
-                // Disconnect the surviving PointNode end so it knows the segment is gone
                 if (seg.getStartNode() != null) seg.getStartNode().removeSegment(seg);
                 if (seg.getEndNode()   != null) seg.getEndNode().removeSegment(seg);
-                return true; // remove this segment
+                return true;
             }
             return false;
         });
-        // Prune any PointNodes that now have no segments
+
+        // Prune PointNodes left with no segments
         pointNodes.removeIf(n -> n.getConnectedSegments().isEmpty());
+        return true;
     }
 
     // ── Wire Segments ─────────────────────────────────────────────────────────

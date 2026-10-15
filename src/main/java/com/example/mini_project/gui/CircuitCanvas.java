@@ -247,6 +247,7 @@ public class CircuitCanvas extends Pane {
 
         toolbar.setOnZoomIn(() -> viewportManager.zoomIn());
         toolbar.setOnZoomOut(() -> viewportManager.zoomOut());
+        toolbar.setOnDelete(controller::deleteSelected); //deletion ce
     }
 
     private void onViewResized() {

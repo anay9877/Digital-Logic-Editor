@@ -13,7 +13,6 @@ import java.util.Map;
 public class EditorController {
 
     private final Circuit circuit;
-    private final CircuitSimulator simulator = new CircuitSimulator();
     private final Map<ComponentType, Integer> counters  = new HashMap<>();
     private final SelectionManager            selection = new SelectionManager();
 
@@ -92,7 +91,25 @@ public class EditorController {
         System.out.println("Selection cleared");
     }
 
-    private void handleDelete(){
+    private void handleDelete() {
+        deleteSelected();
+    }
+
+    public void deleteSelected() {
+        if (drawingWire) return;   // a wire is mid-drag; its start port may belong to a selected element
+        Collection<String> ids = selection.getSelectedElements();   // already an immutable copy
+        if (ids.isEmpty()) return;
+
+        boolean removedAny = false;
+        for (String id : ids) {
+            removedAny |= onElementDeleted(id);
+        }
+        selection.clear();                  // drop stale ids (also triggers a render)
+        if (removedAny) notifyRender();     // re-simulate on the new model, then redraw
+    }
+
+    public boolean onElementDeleted(String id) {
+        return circuit.removeElement(id);   // counterpart of onElementPlaced
     }
 
     public void moveElements(Collection<String> ids, double dx, double dy){
@@ -532,7 +549,6 @@ public class EditorController {
     public void redo() { }
 
     public void notifyRender() {
-        simulator.simulate(circuit); //added by prajwal (might not be needed)
         if (canvas != null) canvas.render();
     }
 }

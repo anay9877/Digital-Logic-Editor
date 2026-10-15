@@ -14,6 +14,13 @@ public class EditorToolbar extends HBox {
     private Runnable onUserSelect;
     private Runnable onZoomIn;
     private Runnable onZoomOut;
+    //prajwal
+    private Runnable onDelete;
+
+    public void setOnDelete(Runnable action) {
+        this.onDelete = action;
+    }
+    //prajwal
 
     public EditorToolbar(Circuit circuit) {
         this.circuit = circuit;
@@ -40,6 +47,10 @@ public class EditorToolbar extends HBox {
                         onZoomOut.run();
                     }
                     return;
+                }
+                if (t == ToolbarOptions.Delete) {
+                    if (onDelete != null) onDelete.run();
+                    return;                       // keep the current tool and palette state
                 }
                 selectToolbarOption(t);
                 if (onUserSelect != null) {
@@ -68,4 +79,6 @@ public class EditorToolbar extends HBox {
     public void setOnZoomOut(Runnable action) {
         this.onZoomOut = action;
     }
+
+    
 }
