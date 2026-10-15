@@ -48,8 +48,14 @@ public class EditorWindow extends Application {
         scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
             if (e.getCode() == KeyCode.ESCAPE) {
                 controller.getSelection().clear();
-            } else if (e.getCode() == KeyCode.DELETE || e.getCode() == KeyCode.BACK_SPACE) { //deletion ce
+            } else if (e.getCode() == KeyCode.DELETE || e.getCode() == KeyCode.BACK_SPACE) {
                 controller.deleteSelected();
+                e.consume();
+            } else if (e.isShortcutDown() && e.getCode() == KeyCode.Z) {
+                if (e.isShiftDown()) controller.redo(); else controller.undo();
+                e.consume();
+            } else if (e.isShortcutDown() && e.getCode() == KeyCode.Y) {
+                controller.redo();
                 e.consume();
             }
         });

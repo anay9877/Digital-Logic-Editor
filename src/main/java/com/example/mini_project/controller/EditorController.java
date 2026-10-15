@@ -3,6 +3,7 @@ package com.example.mini_project.controller;
 import com.example.mini_project.domain.*;
 import com.example.mini_project.gui.CircuitCanvas;
 import com.example.mini_project.gui.ToolbarOptions;
+import com.example.mini_project.persistence.CircuitSerializer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -16,6 +17,7 @@ public class EditorController {
     private final Circuit circuit;
     private final Map<ComponentType, Integer> counters  = new HashMap<>();
     private final SelectionManager            selection = new SelectionManager();
+    private final HistoryManager history = new HistoryManager();
 
     // ── Wire drawing state ────────────────────────────────────────────────────
     private boolean drawingWire = false;
@@ -32,6 +34,7 @@ public class EditorController {
 
     public EditorController(Circuit circuit) {
         this.circuit = circuit;
+        history.reset(CircuitSerializer.snapshot(circuit));   // baseline: empty circuit
     }
 
     public void setCanvas(CircuitCanvas canvas) { this.canvas = canvas; }
@@ -71,11 +74,13 @@ public class EditorController {
         String id = type.name() + "-" + n;
         circuit.addElement(type.create(id, CircuitCanvas.snap(x), CircuitCanvas.snap(y)));
         notifyRender();
+        recordChange();
     }
 
     public void toggleInput(InputElement input) {
         input.toggle();
         notifyRender();
+        recordChange();
     }
 
     // ── Toolbar option dispatch ───────────────────────────────────────────────
@@ -111,7 +116,7 @@ public class EditorController {
         selection.clear();
         if (changed) {
             notifyRender();
-            //recordChange();                                        // undo covers wire deletion too
+            recordChange();
         }
     }
 
@@ -120,16 +125,22 @@ public class EditorController {
     }
 
     public void moveElements(Collection<String> ids, double dx, double dy){
+        boolean changed = false;
         for(String id : ids){
             CircuitElement e = circuit.getElement(id);
             if(e != null) {
                 double newX = CircuitCanvas.snap(e.getX() + dx);
                 double newY = CircuitCanvas.snap(e.getY() + dy);
+                if (newX == e.getX() && newY == e.getY()) continue;
                 e.setPosition(newX, newY);
                 onComponentMoved(e);
+                changed = true;
             }
         }
-        notifyRender();
+        if (changed) {
+            notifyRender();
+            recordChange();
+        }
     }
 
     // ── Wire drawing — called by CircuitCanvas mouse handlers ─────────────────
@@ -220,6 +231,14 @@ public class EditorController {
     }
 
     public void onWireMouseReleased(double mouseX, double mouseY) {
+        try {
+            handleWireRelease(mouseX, mouseY);
+        } finally {
+            recordChange();                // runs on every exit path of the old method
+        }
+    }
+
+    private void handleWireRelease(double mouseX, double mouseY) {
         if (!drawingWire) return;
         drawingWire = false;
 
@@ -279,6 +298,7 @@ public class EditorController {
         }
         notifyRender();
     }
+    
 
     public void onSelectPoint(double x, double y, boolean additive, boolean wholeWire) {
         WireSegment hit = findNearestWire(x, y);
@@ -570,7 +590,6 @@ public class EditorController {
                 }
             }
         }
-        notifyRender();
     }
 
     public boolean isDrawingWire()     { return drawingWire;      }
@@ -578,8 +597,40 @@ public class EditorController {
     public double  getDragStartY()     { return dragStartY;       }
     public boolean isHorizontalFirst() { return horizontalFirst;  }
 
-    public void undo() { }
-    public void redo() { }
+    public HistoryManager getHistory() { 
+        return history; 
+    }
+
+    private void recordChange() {
+        history.record(CircuitSerializer.snapshot(circuit));
+    }
+
+    public void resetHistory() {
+        history.reset(CircuitSerializer.snapshot(circuit));
+    }
+
+    public void undo() {
+        if (drawingWire) return;           // never swap the model under an in-progress wire
+        recordChange();                    // safety net: capture any unrecorded change first
+        String prev = history.undo();
+        if (prev != null) applySnapshot(prev);
+    }
+
+    public void redo() {
+        if (drawingWire) return;
+        recordChange();
+        String next = history.redo();
+        if (next != null) applySnapshot(next);
+    }
+
+    private void applySnapshot(String json) {
+        CircuitSerializer.restore(json, circuit);
+        drawingWire = false;
+        dragStartPort = null;
+        dragStartNode = null;
+        selection.clear();                 // selected ids may no longer exist
+        notifyRender();                    // re-simulate and redraw
+    }
 
     public void notifyRender() {
         if (canvas != null) canvas.render();

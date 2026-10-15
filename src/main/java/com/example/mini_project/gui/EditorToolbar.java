@@ -16,11 +16,11 @@ public class EditorToolbar extends HBox {
     private Runnable onZoomOut;
     //prajwal
     private Runnable onDelete;
-
-    public void setOnDelete(Runnable action) {
-        this.onDelete = action;
-    }
-    //prajwal
+    //undo redo
+    private Runnable onUndo;
+    private Runnable onRedo;
+    private Button undoButton;
+    private Button redoButton;
 
     public EditorToolbar(Circuit circuit) {
         this.circuit = circuit;
@@ -35,6 +35,8 @@ public class EditorToolbar extends HBox {
             }
             toolbarOptions.add(t);
             Button button = new Button(t.name());
+            if (t == ToolbarOptions.Undo) undoButton = button; //prajwal "undo"
+            if (t == ToolbarOptions.Redo) redoButton = button; //prajwal "redo"
             button.setOnAction(e -> {
                 if (t == ToolbarOptions.Zoom_In) {
                     if(onZoomIn != null) {
@@ -52,6 +54,15 @@ public class EditorToolbar extends HBox {
                     if (onDelete != null) onDelete.run();
                     return;                       // keep the current tool and palette state
                 }
+                //prajwal undo redo
+                if (t == ToolbarOptions.Undo) {
+                    if (onUndo != null) onUndo.run();
+                    return;
+                }
+                if (t == ToolbarOptions.Redo) {
+                    if (onRedo != null) onRedo.run();
+                    return;
+}
                 selectToolbarOption(t);
                 if (onUserSelect != null) {
                     onUserSelect.run();
@@ -60,6 +71,25 @@ public class EditorToolbar extends HBox {
             getChildren().add(button);
         }
     }
+
+    //setters getters for undo redo
+    public void setOnUndo(Runnable action) { 
+        this.onUndo = action; 
+    }
+    public void setOnRedo(Runnable action) { 
+        this.onRedo = action; 
+    }
+
+    public void setHistoryState(boolean canUndo, boolean canRedo) {
+        if (undoButton != null) undoButton.setDisable(!canUndo);
+        if (redoButton != null) redoButton.setDisable(!canRedo);
+    }
+
+    public void setOnDelete(Runnable action) {
+        this.onDelete = action;
+    }
+    //prajwal
+
 
     public void setOnUserSelect(Runnable r) {
         this.onUserSelect = r;
