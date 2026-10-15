@@ -13,8 +13,8 @@ import java.util.Map;
 public class EditorController {
 
     private final Circuit circuit;
-    private final Map<ComponentType, Integer> counters  = new HashMap<>();
-    private final SelectionManager            selection = new SelectionManager();
+    private final Map<ComponentType, Integer> counters = new HashMap<>();
+    private final SelectionManager selection = new SelectionManager();
 
     // ── Wire drawing state ────────────────────────────────────────────────────
     private boolean drawingWire = false;
@@ -24,7 +24,9 @@ public class EditorController {
     private boolean horizontalFirst = true;
     private boolean bendDirectionLocked = false;
 
-    /** Canvas reference, set after construction via {@link #setCanvas}. */
+    /**
+     * Canvas reference, set after construction via {@link #setCanvas}.
+     */
     private CircuitCanvas canvas;
 
     // ── Constructor ───────────────────────────────────────────────────────────
@@ -33,11 +35,21 @@ public class EditorController {
         this.circuit = circuit;
     }
 
-    public void setCanvas(CircuitCanvas canvas) { this.canvas = canvas; }
+    public void setCanvas(CircuitCanvas canvas) {
+        this.canvas = canvas;
+    }
 
-    public Circuit         getCircuit()   { return circuit;   }
-    public SelectionManager getSelection() { return selection; }
-    public CircuitCanvas   getCanvas()    { return canvas;    }
+    public Circuit getCircuit() {
+        return circuit;
+    }
+
+    public SelectionManager getSelection() {
+        return selection;
+    }
+
+    public CircuitCanvas getCanvas() {
+        return canvas;
+    }
 
     public void newCircuit() {
         circuit.clear();
@@ -74,7 +86,7 @@ public class EditorController {
     // ── Toolbar option dispatch ───────────────────────────────────────────────
 
     public void optionSelected(ToolbarOptions option, double x, double y) {
-        switch (option){
+        switch (option) {
             case Select -> handleSelect(x, y);
             case Delete -> handleDelete();
         }
@@ -85,13 +97,13 @@ public class EditorController {
         System.out.println("Selection cleared");
     }
 
-    private void handleDelete(){
+    private void handleDelete() {
     }
 
-    public void moveElements(Collection<String> ids, double dx, double dy){
-        for(String id : ids){
+    public void moveElements(Collection<String> ids, double dx, double dy) {
+        for (String id : ids) {
             CircuitElement e = circuit.getElement(id);
-            if(e != null) {
+            if (e != null) {
                 double newX = CircuitCanvas.snap(e.getX() + dx);
                 double newY = CircuitCanvas.snap(e.getY() + dy);
                 e.setPosition(newX, newY);
@@ -103,8 +115,8 @@ public class EditorController {
 
     // ── Wire drawing — called by CircuitCanvas mouse handlers ─────────────────
 
-    private static final double PORT_HIT_RADIUS    = CircuitCanvas.GRID_SIZE * 1.5;  // 15px
-    private static final double NODE_HIT_RADIUS    = CircuitCanvas.GRID_SIZE * 1.5;  // 15px
+    private static final double PORT_HIT_RADIUS = CircuitCanvas.GRID_SIZE * 1.5;  // 15px
+    private static final double NODE_HIT_RADIUS = CircuitCanvas.GRID_SIZE * 1.5;  // 15px
     private static final double WIRE_HIT_THRESHOLD = CircuitCanvas.GRID_SIZE * 0.6;  // 6px
     private static final double DIRECTION_LOCK_DIST = CircuitCanvas.GRID_SIZE;        // 10px
 
@@ -115,16 +127,16 @@ public class EditorController {
         // Try to hit a port first
         Port hitPort = findPortAt(x, y);
         if (hitPort != null) {
-            dragStartPort  = hitPort;
-            dragStartNode  = null;
+            dragStartPort = hitPort;
+            dragStartNode = null;
             // Snap so the wire start is always on a grid dot.
             // Port.getAbsX() = element.getX() + relX. element.getX() is snapped but relX is a
             // raw scaled value that may not be a multiple of GRID_SIZE. Snapping here ensures
             // the start coordinate matches any snapped mouse position during drag, preventing
             // spurious L-bends when the user drags perfectly vertical or horizontal.
-            dragStartX     = CircuitCanvas.snap(hitPort.getAbsX());
-            dragStartY     = CircuitCanvas.snap(hitPort.getAbsY());
-            drawingWire    = true;
+            dragStartX = CircuitCanvas.snap(hitPort.getAbsX());
+            dragStartY = CircuitCanvas.snap(hitPort.getAbsY());
+            drawingWire = true;
             bendDirectionLocked = false;
             return;
         }
@@ -132,11 +144,11 @@ public class EditorController {
         // Try to hit an existing PointNode (junction, corner, or free end)
         PointNode hitNode = findNodeAt(x, y);
         if (hitNode != null) {
-            dragStartPort  = null;
-            dragStartNode  = hitNode;
-            dragStartX     = CircuitCanvas.snap(hitNode.getX());
-            dragStartY     = CircuitCanvas.snap(hitNode.getY());
-            drawingWire    = true;
+            dragStartPort = null;
+            dragStartNode = hitNode;
+            dragStartX = CircuitCanvas.snap(hitNode.getX());
+            dragStartY = CircuitCanvas.snap(hitNode.getY());
+            drawingWire = true;
             bendDirectionLocked = false;
             return;
         }
@@ -145,11 +157,11 @@ public class EditorController {
         WireSegment hitSeg = findWireSegmentAt(x, y);
         if (hitSeg != null) {
             PointNode junction = circuit.splitSegmentAtJunction(hitSeg, x, y);
-            dragStartPort       = null;
-            dragStartNode       = junction;
-            dragStartX          = CircuitCanvas.snap(junction.getX());
-            dragStartY          = CircuitCanvas.snap(junction.getY());
-            drawingWire         = true;
+            dragStartPort = null;
+            dragStartNode = junction;
+            dragStartX = CircuitCanvas.snap(junction.getX());
+            dragStartY = CircuitCanvas.snap(junction.getY());
+            drawingWire = true;
             bendDirectionLocked = false;
             return;
         }
@@ -167,7 +179,7 @@ public class EditorController {
             double dx = Math.abs(mouseX - dragStartX);
             double dy = Math.abs(mouseY - dragStartY);
             if (dx >= DIRECTION_LOCK_DIST || dy >= DIRECTION_LOCK_DIST) {
-                horizontalFirst     = dx >= dy;
+                horizontalFirst = dx >= dy;
                 bendDirectionLocked = true;
             }
         }
@@ -442,7 +454,10 @@ public class EditorController {
                 if (otherNode != null && otherNode.getConnectedSegments().size() == 2) {
                     WireSegment otherSeg = null;
                     for (WireSegment s : otherNode.getConnectedSegments()) {
-                        if (s != seg) { otherSeg = s; break; }
+                        if (s != seg) {
+                            otherSeg = s;
+                            break;
+                        }
                     }
 
                     if (otherSeg != null) {
@@ -450,7 +465,8 @@ public class EditorController {
                             otherNode.setY(py);
                             seg.setY1(py);
                             seg.setY2(py);
-                            if (isStart) seg.setX1(px); else seg.setX2(px);
+                            if (isStart) seg.setX1(px);
+                            else seg.setX2(px);
                             if (otherSeg.getStartNode() == otherNode) otherSeg.setY1(py);
                             else otherSeg.setY2(py);
                             continue;
@@ -458,7 +474,8 @@ public class EditorController {
                             otherNode.setX(px);
                             seg.setX1(px);
                             seg.setX2(px);
-                            if (isStart) seg.setY1(py); else seg.setY2(py);
+                            if (isStart) seg.setY1(py);
+                            else seg.setY2(py);
                             if (otherSeg.getStartNode() == otherNode) otherSeg.setX1(px);
                             else otherSeg.setX2(px);
                             continue;
@@ -468,8 +485,13 @@ public class EditorController {
 
                 // If already aligned on an axis:
                 if (Math.abs(px - otherX) < 0.001 || Math.abs(py - otherY) < 0.001) {
-                    if (isStart) { seg.setX1(px); seg.setY1(py); }
-                    else         { seg.setX2(px); seg.setY2(py); }
+                    if (isStart) {
+                        seg.setX1(px);
+                        seg.setY1(py);
+                    } else {
+                        seg.setX2(px);
+                        seg.setY2(py);
+                    }
                 } else {
                     // Not aligned: create an orthogonal L-bend between (px, py) and (otherX, otherY)
                     double bendX = otherX;
@@ -484,8 +506,10 @@ public class EditorController {
                             oldEndNode.removeSegment(seg);
                         }
 
-                        seg.setX1(px); seg.setY1(py);
-                        seg.setX2(bendX); seg.setY2(bendY);
+                        seg.setX1(px);
+                        seg.setY1(py);
+                        seg.setX2(bendX);
+                        seg.setY2(bendY);
                         seg.setEndNode(bend);
                         bend.addSegment(seg);
 
@@ -500,8 +524,10 @@ public class EditorController {
                             oldStartNode.removeSegment(seg);
                         }
 
-                        seg.setX1(bendX); seg.setY1(bendY);
-                        seg.setX2(px); seg.setY2(py);
+                        seg.setX1(bendX);
+                        seg.setY1(bendY);
+                        seg.setX2(px);
+                        seg.setY2(py);
                         seg.setStartNode(bend);
                         bend.addSegment(seg);
 
@@ -516,13 +542,18 @@ public class EditorController {
         notifyRender();
     }
 
-    public boolean isDrawingWire()     { return drawingWire;      }
-    public double  getDragStartX()     { return dragStartX;       }
-    public double  getDragStartY()     { return dragStartY;       }
-    public boolean isHorizontalFirst() { return horizontalFirst;  }
+    public boolean isDrawingWire() {
+        return drawingWire;
+    }
+//    public double  getDragStartX()     { return dragStartX;       }
+//    public double  getDragStartY()     { return dragStartY;       }
+//    public boolean isHorizontalFirst() { return horizontalFirst;  }
 
-    public void undo() { }
-    public void redo() { }
+    public void undo() {
+    }
+
+    public void redo() {
+    }
 
     public void notifyRender() {
         if (canvas != null) canvas.render();

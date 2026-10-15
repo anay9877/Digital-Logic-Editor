@@ -11,17 +11,16 @@ public abstract class Gate extends CircuitElement {
 
     protected Gate(String id, double x, double y, int inputCount) {
         super(id, x, y);
-
-        // Build ports without offsets first — offsets are assigned below
-        // once the registry can tell us where each port sits visually.
         for (int i = 0; i < inputCount; i++) {
             inputPorts.add(new Port(id + "-in" + i, PortType.INPUT, this));
         }
         outputPort = new Port(id + "-out", PortType.OUTPUT, this);
 
-        // Assign pixel offsets from the SVG icon registry so that
-        // every port knows its exact on-screen position relative to
-        // the component's top-left corner.
+        // Build ports without offsets first
+        // Offsets are assigned below, once the registry can tell us where each
+        // port sits visually.
+        // Assign pixel offsets from the SVG icon registry so that every port
+        // knows its exact on-screen position relative to the component's top-left corner.
         applyPortOffsets(new SvgIconRegistry());
     }
 
@@ -65,10 +64,17 @@ public abstract class Gate extends CircuitElement {
         return null;
     }
 
-    public List<Port> getInputPorts()  { return inputPorts; }
-    public Port       getOutputPort()  { return outputPort; }
+    public List<Port> getInputPorts() {
+        return inputPorts;
+    }
 
-    /** Returns ALL ports (inputs + output) as a flat list for convenience. */
+    public Port getOutputPort() {
+        return outputPort;
+    }
+
+    /**
+     * Returns ALL ports (inputs + output) as a flat list for convenience.
+     */
     public List<Port> getAllPorts() {
         List<Port> all = new ArrayList<>(inputPorts);
         all.add(outputPort);

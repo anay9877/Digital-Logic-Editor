@@ -14,18 +14,39 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+// Handles saving, loading, importing and exporting
 public class CircuitSerializer {
 
+    // Gson is a lib which is used to convert Java objects to JSON and vice versa
+    // GsonBuilder allows that configuration to happen
+    // CDATA_PATTERN is a regex to pattern finder, which finds the content enclosed in CDATA section in XML file
+    // Eg - <![CDATA[{"zoom": 1.0}]]> is converted to {"zoom": 1.0}
+    // Finds the content under metadata tag of an SVG (same as above but for SVG)
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Pattern CDATA_PATTERN = Pattern.compile("<!\\[CDATA\\[(.*?)\\]\\]>", Pattern.DOTALL);
     private static final Pattern METADATA_TAG_PATTERN = Pattern.compile("<metadata[^>]*>(.*?)</metadata>", Pattern.DOTALL);
 
-    // ── JSON Serialization ───────────────────────────────────────────────────
+    // JSON Serialization
 
+    // Convert a normal circuit to DTO
+    // Circuit
+    // ├── elements → CircuitElement objects
+    // │                ├── Ports
+    // │                ├── Internal properties
+    // │                └── Possibly JavaFX references
+    // ├── wireSegments → WireSegment objects
+    // └── pointNodes → PointNode objects
+    //
+    // CircuitDto
+    // ├── elements → ElementDto (id, type, x, y, props)
+    // ├── wires    → WireDto (id, endpoints)
+    // ├── nodes    → NodeDto (id, x, y)
+    // └── view      → ViewDto (zoom, panX, panY)
+    // (Taken by AI)
     public static CircuitDto toDto(Circuit circuit, ViewportManager viewport) {
         CircuitDto dto = new CircuitDto();
 
-        // 1. Elements (sorted by ID for deterministic output)
+        // Take the elements and then sort them by ID(using getId function)
         List<CircuitElement> sortedElements = new ArrayList<>(circuit.getElements().values());
         sortedElements.sort(Comparator.comparing(CircuitElement::getId));
         for (CircuitElement elem : sortedElements) {
@@ -42,7 +63,7 @@ public class CircuitSerializer {
             ));
         }
 
-        // 2. Nodes (sorted by ID)
+        // Sort the nodes and add it to sortedNodes
         List<PointNode> sortedNodes = new ArrayList<>(circuit.getPointNodes());
         sortedNodes.sort(Comparator.comparing(PointNode::getId));
         for (PointNode node : sortedNodes) {
@@ -53,7 +74,7 @@ public class CircuitSerializer {
             ));
         }
 
-        // 3. Wires (sorted by ID)
+        // Sort the wires and add it to sortedWires
         List<WireSegment> sortedWires = new ArrayList<>(circuit.getWireSegments());
         sortedWires.sort(Comparator.comparing(WireSegment::getId));
         for (WireSegment seg : sortedWires) {

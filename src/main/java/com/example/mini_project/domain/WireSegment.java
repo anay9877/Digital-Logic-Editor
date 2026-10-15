@@ -4,7 +4,7 @@ package com.example.mini_project.domain;
  * One straight orthogonal wire segment between exactly two endpoints.
  * A segment is always a single straight line: either purely horizontal (y1 == y2)
  * or purely vertical (x1 == x2).
- *
+ * <p>
  * Each endpoint is EITHER a {@link Port} (attached to a component) OR a
  * {@link PointNode} (a free end, corner bend, or junction in empty canvas space).
  * Exactly one of the two endpoint fields is non-null for each end.
@@ -15,28 +15,26 @@ public class WireSegment {
 
     private final String id;
 
-    // ── Start endpoint (exactly one of these is non-null) ─────────────────────
-    private Port      startPort;   // null if start is a PointNode
+    // Start Endpoint
+    // Exactly only one has a non null value
+    private Port startPort;   // null if start is a PointNode
     private PointNode startNode;   // null if start is a Port
 
-    // ── End endpoint (exactly one of these is non-null) ───────────────────────
-    private Port      endPort;     // null if end is a PointNode
+    // End Endpoint
+    // Exactly only one has a non null value
+    private Port endPort;     // null if end is a PointNode
     private PointNode endNode;     // null if end is a Port
 
-    /**
-     * Absolute canvas coordinates for both endpoints.
-     */
+    // Absolute coordinates
     private double x1, y1; // start
     private double x2, y2; // end
 
-    /**
-     * Electrical state of this segment as reported by the simulation engine.
-     * Defaults to UNKNOWN until the simulation runs and assigns a net value.
-     */
     private SignalState state = SignalState.UNKNOWN;
 
-    // ── Constructor helpers ───────────────────────────────────────────────────
-
+    // Why 2 constructors?
+    // Cause there are times when only want to create a wire segment and use it for small purpose
+    // The first constructor allows you to do it
+    // The second constructor used strictly when you have an id and want to create a wire segment
     public WireSegment(double x1, double y1, double x2, double y2) {
         this("wire-" + (nextId++), x1, y1, x2, y2);
     }
@@ -57,44 +55,39 @@ public class WireSegment {
         if (id >= nextId) nextId = id + 1;
     }
 
-    /** Segment from a Port to another Port. */
-    public static WireSegment portToPort(Port start, double x1, double y1,
-                                         Port end,   double x2, double y2) {
+    // Wire segment from PORT to PORT
+    public static WireSegment portToPort(Port start, double x1, double y1, Port end, double x2, double y2) {
         WireSegment s = new WireSegment(x1, y1, x2, y2);
         s.startPort = start;
-        s.endPort   = end;
+        s.endPort = end;
         return s;
     }
 
-    /** Segment from a Port to a PointNode (free end, corner, or junction). */
-    public static WireSegment portToNode(Port start, double x1, double y1,
-                                         PointNode end) {
+    // Wire segment from port to pointnode
+    public static WireSegment portToNode(Port start, double x1, double y1, PointNode end) {
         WireSegment s = new WireSegment(x1, y1, end.getX(), end.getY());
         s.startPort = start;
-        s.endNode   = end;
+        s.endNode = end;
         return s;
     }
 
-    /** Segment from a PointNode to another PointNode. */
+    // Wire segment from pointnode to pointnode
     public static WireSegment nodeToNode(PointNode start, PointNode end) {
-        WireSegment s = new WireSegment(start.getX(), start.getY(),
-                                        end.getX(),   end.getY());
+        WireSegment s = new WireSegment(start.getX(), start.getY(), end.getX(), end.getY());
         s.startNode = start;
-        s.endNode   = end;
+        s.endNode = end;
         return s;
     }
 
-    /** Segment from a PointNode to a Port. */
-    public static WireSegment nodeToPort(PointNode start, Port end,
-                                         double x2, double y2) {
+    // Wire segment from pointnode to port
+    public static WireSegment nodeToPort(PointNode start, Port end, double x2, double y2) {
         WireSegment s = new WireSegment(start.getX(), start.getY(), x2, y2);
         s.startNode = start;
-        s.endPort   = end;
+        s.endPort = end;
         return s;
     }
 
-    // ── Orientation ───────────────────────────────────────────────────────────
-
+    // Orientation
     public boolean isHorizontal() {
         return Math.abs(y1 - y2) < 0.001;
     }
@@ -103,42 +96,90 @@ public class WireSegment {
         return Math.abs(x1 - x2) < 0.001;
     }
 
-    // ── Getters ───────────────────────────────────────────────────────────────
+    // Getters
+    public String getId() {
+        return id;
+    }
 
-    public String getId()  { return id; }
+    public double getX1() {
+        return x1;
+    }
 
-    public double getX1()  { return x1; }
-    public double getY1()  { return y1; }
-    public double getX2()  { return x2; }
-    public double getY2()  { return y2; }
+    public double getY1() {
+        return y1;
+    }
 
-    public Port      getStartPort() { return startPort; }
-    public PointNode getStartNode() { return startNode; }
-    public Port      getEndPort()   { return endPort; }
-    public PointNode getEndNode()   { return endNode; }
+    public double getX2() {
+        return x2;
+    }
 
-    public void setStartPort(Port p)      { this.startPort = p; this.startNode = null; }
-    public void setStartNode(PointNode n) { this.startNode = n; this.startPort = null; }
-    public void setEndPort(Port p)        { this.endPort = p; this.endNode = null; }
-    public void setEndNode(PointNode n)   { this.endNode = n; this.endPort = null; }
+    public double getY2() {
+        return y2;
+    }
 
-    // ── Signal state ──────────────────────────────────────────────────────────
+    public Port getStartPort() {
+        return startPort;
+    }
 
-    public SignalState getState() { return state; }
-    public void setState(SignalState state) { this.state = state; }
+    public PointNode getStartNode() {
+        return startNode;
+    }
 
-    // ── Mutators (called when endpoints move or segment is extended) ──────────
+    public Port getEndPort() {
+        return endPort;
+    }
 
-    public void setX1(double x1) { this.x1 = x1; }
-    public void setY1(double y1) { this.y1 = y1; }
-    public void setX2(double x2) { this.x2 = x2; }
-    public void setY2(double y2) { this.y2 = y2; }
+    public PointNode getEndNode() {
+        return endNode;
+    }
 
-    // ── Utility ───────────────────────────────────────────────────────────────
+    public void setStartPort(Port p) {
+        this.startPort = p;
+        this.startNode = null;
+    }
 
-    /**
-     * Returns the minimum distance from canvas point (px, py) to this straight segment.
-     */
+    public void setStartNode(PointNode n) {
+        this.startNode = n;
+        this.startPort = null;
+    }
+
+    public void setEndPort(Port p) {
+        this.endPort = p;
+        this.endNode = null;
+    }
+
+    public void setEndNode(PointNode n) {
+        this.endNode = n;
+        this.endPort = null;
+    }
+
+    // Signal state
+    public SignalState getState() {
+        return state;
+    }
+
+    public void setState(SignalState state) {
+        this.state = state;
+    }
+
+    // Setters -> used when we set or extend a wire segment
+    public void setX1(double x1) {
+        this.x1 = x1;
+    }
+
+    public void setY1(double y1) {
+        this.y1 = y1;
+    }
+
+    public void setX2(double x2) {
+        this.x2 = x2;
+    }
+
+    public void setY2(double y2) {
+        this.y2 = y2;
+    }
+
+    // Returns the minimum distance from canvas point (px, py) to this straight segment
     public double distanceToPoint(double px, double py) {
         return pointToSegmentDist(px, py, x1, y1, x2, y2);
     }

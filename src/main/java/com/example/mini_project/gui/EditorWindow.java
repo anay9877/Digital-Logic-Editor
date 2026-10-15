@@ -194,7 +194,7 @@ public class EditorWindow extends Application {
 
     // The exception thrown is caught and showError function is called
     private void showError(String title, String message) {
-        Alert alert = new Alert(javafx.scene.control.Alert.AlertType.ERROR);
+        Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Error");
         alert.setHeaderText(title);
         alert.setContentText(message);

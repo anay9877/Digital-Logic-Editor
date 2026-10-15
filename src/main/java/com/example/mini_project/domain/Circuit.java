@@ -7,14 +7,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+// This is main Circuit class, but it may contain disjoints circuits as well!!
+// Contains -> CircuitElements, WireSegments, PointNodes
 public class Circuit {
 
     private final Map<String, CircuitElement> elements     = new HashMap<>();
     private final List<WireSegment>           wireSegments = new ArrayList<>();
     private final List<PointNode>             pointNodes   = new ArrayList<>();
-
-
-    // ── Elements ──────────────────────────────────────────────────────────────
 
     public void addElement(CircuitElement e) { elements.put(e.getId(), e); }
 
@@ -22,6 +21,7 @@ public class Circuit {
 
     public Map<String, CircuitElement> getElements() { return elements; }
 
+    // Used by Ctrl+N that is New button in File MenuBar
     public void clear() {
         elements.clear();
         wireSegments.clear();
