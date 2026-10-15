@@ -218,6 +218,10 @@ public class CircuitCanvas extends Pane {
             if (comp != null && comp != ComponentType.UNKNOWN) {
                 Point2D p = contentGroup.sceneToLocal(e.getSceneX(), e.getSceneY());
                 controller.onElementPlaced(comp, p.getX(), p.getY());
+            } else if (tool == ToolbarOptions.Select) {
+                Point2D p = contentGroup.sceneToLocal(e.getSceneX(), e.getSceneY());   // wires use world coordinates
+                boolean additive = e.isShiftDown() || e.isControlDown();
+                controller.onSelectPoint(p.getX(), p.getY(), additive, e.getClickCount() >= 2);
             } else if (tool != null && tool != ToolbarOptions.Unknown && tool != ToolbarOptions.Wire) {
                 controller.optionSelected(tool, e.getX(), e.getY());
             }

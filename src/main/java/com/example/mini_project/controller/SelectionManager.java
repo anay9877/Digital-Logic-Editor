@@ -35,6 +35,12 @@ public class SelectionManager {
         fire();
     }
 
+    public void selectWires(Collection<String> ids, boolean additive) {
+        if (!additive) clearSilently();
+        selectedWires.addAll(ids);
+        fire();
+    }
+
     public void clear() {
         clearSilently();
         fire();
@@ -51,6 +57,11 @@ public class SelectionManager {
     public Set<String> getSelectedElements() {
         return Set.copyOf(selectedElements);
     }
+
+    public Set<String> getSelectedWires() {
+        return Set.copyOf(selectedWires);     // snapshot, safe to loop over while deleting
+    }
+
 
     private void clearSilently() {
         selectedElements.clear();

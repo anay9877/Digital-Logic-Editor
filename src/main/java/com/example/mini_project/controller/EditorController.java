@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class EditorController {
 
@@ -96,16 +97,22 @@ public class EditorController {
     }
 
     public void deleteSelected() {
-        if (drawingWire) return;   // a wire is mid-drag; its start port may belong to a selected element
-        Collection<String> ids = selection.getSelectedElements();   // already an immutable copy
-        if (ids.isEmpty()) return;
+        if (drawingWire) return;
+        Collection<String> elementIds = selection.getSelectedElements();
+        Set<String> wireIds = selection.getSelectedWires();
+        if (elementIds.isEmpty() && wireIds.isEmpty()) return;
 
-        boolean removedAny = false;
-        for (String id : ids) {
-            removedAny |= onElementDeleted(id);
+        boolean changed = false;
+        for (String id : elementIds) {
+            changed |= onElementDeleted(id);                       // its cascade may already remove some selected wires
         }
-        selection.clear();                  // drop stale ids (also triggers a render)
-        if (removedAny) notifyRender();     // re-simulate on the new model, then redraw
+        changed |= circuit.removeWireSegments(wireIds) > 0;        // already-removed ids are skipped
+
+        selection.clear();
+        if (changed) {
+            notifyRender();
+            //recordChange();                                        // undo covers wire deletion too
+        }
     }
 
     public boolean onElementDeleted(String id) {
@@ -131,6 +138,7 @@ public class EditorController {
     private static final double NODE_HIT_RADIUS    = CircuitCanvas.GRID_SIZE * 1.5;  // 15px
     private static final double WIRE_HIT_THRESHOLD = CircuitCanvas.GRID_SIZE * 0.6;  // 6px
     private static final double DIRECTION_LOCK_DIST = CircuitCanvas.GRID_SIZE;        // 10px
+    private static final double WIRE_SELECT_THRESHOLD = 8.0; 
 
     public void onWireMousePressed(double x, double y) {
         x = CircuitCanvas.snap(x);
@@ -271,6 +279,31 @@ public class EditorController {
         }
         notifyRender();
     }
+
+    public void onSelectPoint(double x, double y, boolean additive, boolean wholeWire) {
+        WireSegment hit = findNearestWire(x, y);
+        if (hit == null) {
+            if (!additive) selection.clear();          // same behaviour as the old handleSelect
+            return;
+        }
+        if (wholeWire) {
+            List<String> ids = new ArrayList<>();
+            for (WireSegment s : circuit.getConnectedWires(hit)) ids.add(s.getId());
+            selection.selectWires(ids, additive);
+        } else {
+            selection.selectWire(hit.getId(), additive);
+        }
+    }
+
+    public WireSegment findNearestWire(double x, double y) {
+        WireSegment best = null;
+        double bestDist = WIRE_SELECT_THRESHOLD;
+        for (WireSegment seg : circuit.getWireSegments()) {
+            double d = seg.distanceToPoint(x, y);
+            if (d <= bestDist) { bestDist = d; best = seg; }   // nearest wins near corners and junctions
+        }
+        return best;
+    }    
 
     private void attachSegmentEnd(WireSegment seg, PointNode currentNode, double targetX, double targetY) {
         boolean isStart = (seg.getStartNode() == currentNode);
