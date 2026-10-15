@@ -40,29 +40,43 @@ public class Circuit {
         pointNodes.clear();
     }
 
-    public void removeElement(String id) {
-        // Remove the element
-        elements.remove(id);
-        // Cascade-delete any wire segment whose start or end port belongs to
-        // the removed element, so dangling wires never exist.
-        wireSegments.removeIf(seg -> {
-            boolean startBelongs = seg.getStartPort() != null
-                    && seg.getStartPort().getOwner().getId().equals(id);
-            boolean endBelongs = seg.getEndPort() != null
-                    && seg.getEndPort().getOwner().getId().equals(id);
-            if (startBelongs || endBelongs) {
-                // Disconnect the surviving PointNode end so it knows the segment is gone
-                if (seg.getStartNode() != null) seg.getStartNode().removeSegment(seg);
-                if (seg.getEndNode() != null) seg.getEndNode().removeSegment(seg);
-                return true; // remove this segment
+    public boolean removeElement(String id) {
+        if (elements.remove(id) == null) return false;        // unknown or already deleted
+
+        // 1. Seeds: wires whose start/end PORT belongs to the removed element
+        Set<WireSegment> doomed = new HashSet<>();
+        Deque<WireSegment> queue = new ArrayDeque<>();
+        for (WireSegment seg : wireSegments) {
+            if (belongsTo(seg.getStartPort(), id) || belongsTo(seg.getEndPort(), id)) {
+                if (doomed.add(seg)) queue.add(seg);
             }
-            return false;
-        });
-        // Prune any PointNodes that now have no segments
+        }
+
+        // 2. BFS: spread through PointNodes to every connected segment
+        while (!queue.isEmpty()) {
+            WireSegment s = queue.poll();
+            for (PointNode n : new PointNode[]{s.getStartNode(), s.getEndNode()}) {
+                if (n == null) continue;                       // that end is a Port, so the search stops there
+                // if (n.isJunction()) continue;               // optional: see "Choice to confirm" below
+                for (WireSegment next : n.getConnectedSegments()) {
+                    if (doomed.add(next)) queue.add(next);     // add() is false if already visited
+                }
+            }
+        }
+
+        // 3. Delete everything found, then fix the nodes' bookkeeping
+        wireSegments.removeAll(doomed);
+        for (WireSegment s : doomed) {
+            if (s.getStartNode() != null) s.getStartNode().removeSegment(s);
+            if (s.getEndNode() != null) s.getEndNode().removeSegment(s);
+        }
         pointNodes.removeIf(n -> n.getConnectedSegments().isEmpty());
+        return true;
     }
 
-    // ── Wire Segments ─────────────────────────────────────────────────────────
+    private static boolean belongsTo(Port p, String elementId) {
+        return p != null && p.getOwner().getId().equals(elementId);
+    }
 
     public List<WireSegment> getWireSegments() {
         return wireSegments;
@@ -79,6 +93,53 @@ public class Circuit {
         wireSegments.remove(seg);
         if (seg.getStartNode() != null) seg.getStartNode().removeSegment(seg);
         if (seg.getEndNode() != null) seg.getEndNode().removeSegment(seg);
+    }
+
+    /**
+     * All wire segments reachable from 'start' through shared PointNodes (BFS).
+     */
+    public Set<WireSegment> getConnectedWires(WireSegment start) {
+        Set<WireSegment> found = new HashSet<>();
+        Deque<WireSegment> queue = new ArrayDeque<>();
+        found.add(start);
+        queue.add(start);
+        while (!queue.isEmpty()) {
+            WireSegment s = queue.poll();
+            for (PointNode n : new PointNode[]{
+                    s.getStartNode(), s.getEndNode()
+            }) {
+                if (n == null) continue;                    // that end is a port: stop
+                for (WireSegment next : n.getConnectedSegments()) {
+                    if (found.add(next)) queue.add(next);
+                }
+            }
+        }
+        return found;
+    }
+
+    /**
+     * Removes segments by id. Unknown ids are skipped. Returns how many were removed.
+     */
+    public int removeWireSegments(Set<String> ids) {
+        if (ids.isEmpty()) return 0;
+        List<WireSegment> removed = new ArrayList<>();
+        wireSegments.removeIf(seg -> {
+            if (ids.contains(seg.getId())) {
+                removed.add(seg);
+                return true;
+            }
+            return false;
+        });
+        for (WireSegment seg : removed) {                   // keep each node's list + junction flag correct
+            if (seg.getStartNode() != null) {
+                seg.getStartNode().removeSegment(seg);
+            }
+            if (seg.getEndNode() != null) {
+                seg.getEndNode().removeSegment(seg);
+            }
+        }
+        pointNodes.removeIf(n -> n.getConnectedSegments().isEmpty());   // prune orphan nodes
+        return removed.size();
     }
 
     // ── Point Nodes ───────────────────────────────────────────────────────────
@@ -110,7 +171,6 @@ public class Circuit {
      * The caller is responsible for also adding the new incoming segment
      * that triggered the junction.
      */
-    //
     public PointNode splitSegmentAtJunction(WireSegment existingSeg, double jx, double jy) {
         // Project (jx, jy) onto the straight wire segment
         if (existingSeg.isHorizontal()) {

@@ -32,7 +32,7 @@ public class OutputElement extends CircuitElement {
         return inputPort;
     }
 
-    public void setValue(){
+    public void setValue() {
         this.value = inputPort.getValue();
     }
 

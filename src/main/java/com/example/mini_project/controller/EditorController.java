@@ -4,18 +4,21 @@ import com.example.mini_project.domain.*;
 import com.example.mini_project.gui.CircuitCanvas;
 import com.example.mini_project.gui.ToolbarOptions;
 import com.example.mini_project.validation.*;
+import com.example.mini_project.persistence.CircuitSerializer;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class EditorController {
 
     private final Circuit circuit;
     private final Map<ComponentType, Integer> counters = new HashMap<>();
     private final SelectionManager selection = new SelectionManager();
+    private final HistoryManager history = new HistoryManager();
 
     // Wire drawing state
     private boolean drawingWire = false;
@@ -31,6 +34,7 @@ public class EditorController {
 
     public EditorController(Circuit circuit) {
         this.circuit = circuit;
+        history.reset(CircuitSerializer.snapshot(circuit));   // baseline: empty circuit
     }
 
     public void setCanvas(CircuitCanvas canvas) {
@@ -76,11 +80,13 @@ public class EditorController {
         String id = type.name() + "-" + n;
         circuit.addElement(type.create(id, CircuitCanvas.snap(x), CircuitCanvas.snap(y)));
 //        notifyRender();
+        recordChange();
     }
 
     public void toggleInput(InputElement input) {
         input.toggle();
         notifyRender();
+        recordChange();
     }
 
     // Tells which option is selected from toolbar(implemented just for select and delete)
@@ -93,6 +99,30 @@ public class EditorController {
     }
 
     private void handleDelete() {
+        deleteSelected();
+    }
+
+    public void deleteSelected() {
+        if (drawingWire) return;
+        Collection<String> elementIds = selection.getSelectedElements();
+        Set<String> wireIds = selection.getSelectedWires();
+        if (elementIds.isEmpty() && wireIds.isEmpty()) return;
+
+        boolean changed = false;
+        for (String id : elementIds) {
+            changed |= onElementDeleted(id);                       // its cascade may already remove some selected wires
+        }
+        changed |= circuit.removeWireSegments(wireIds) > 0;        // already-removed ids are skipped
+
+        selection.clear();
+        if (changed) {
+            notifyRender();
+            recordChange();
+        }
+    }
+
+    public boolean onElementDeleted(String id) {
+        return circuit.removeElement(id);   // counterpart of onElementPlaced
     }
 
     public List<CircuitElement> validateAndGetOrder() {
@@ -104,7 +134,7 @@ public class EditorController {
         boolean referencesValid = validator.validateWireReferences(circuit);
         if (!(wiresValid && inputsValid && ioValid && logicValid && referencesValid)) {
             throw new IllegalStateException(
-                "Circuit validation failed. See console for details."
+                    "Circuit validation failed. See console for details."
             );
         }
         return new CircuitTopology().sort(circuit);
@@ -122,17 +152,24 @@ public class EditorController {
             System.err.println("Circuit validation failed: " + ex.getMessage());
         }
     }
-    public void moveElements(Collection<String> ids, double dx, double dy){
-        for(String id : ids){
+
+    public void moveElements(Collection<String> ids, double dx, double dy) {
+        boolean changed = false;
+        for (String id : ids) {
             CircuitElement e = circuit.getElement(id);
             if (e != null) {
                 double newX = CircuitCanvas.snap(e.getX() + dx);
                 double newY = CircuitCanvas.snap(e.getY() + dy);
+                if (newX == e.getX() && newY == e.getY()) continue;
                 e.setPosition(newX, newY);
                 onComponentMoved(e);
+                changed = true;
             }
         }
-        notifyRender();
+        if (changed) {
+            notifyRender();
+            recordChange();
+        }
     }
 
     // Wire drawing — called by CircuitCanvas mouse handlers
@@ -140,6 +177,7 @@ public class EditorController {
     private static final double NODE_HIT_RADIUS = CircuitCanvas.GRID_SIZE * 1.5;  // 15px
     private static final double WIRE_HIT_THRESHOLD = CircuitCanvas.GRID_SIZE * 0.6;  // 6px
     private static final double DIRECTION_LOCK_DIST = CircuitCanvas.GRID_SIZE;        // 10px
+    private static final double WIRE_SELECT_THRESHOLD = 8.0;
 
     public void onWireMousePressed(double x, double y) {
         x = CircuitCanvas.snap(x);
@@ -223,6 +261,14 @@ public class EditorController {
     }
 
     public void onWireMouseReleased(double mouseX, double mouseY) {
+        try {
+            handleWireRelease(mouseX, mouseY);
+        } finally {
+            recordChange();                // runs on every exit path of the old method
+        }
+    }
+
+    private void handleWireRelease(double mouseX, double mouseY) {
         if (!drawingWire) return;
         drawingWire = false;
 
@@ -335,6 +381,38 @@ public class EditorController {
             }
         }
         notifyRender();
+    }
+
+    public void onSelectPoint(double x, double y, boolean additive, boolean wholeWire) {
+        WireSegment hit = findNearestWire(x, y);
+        if (hit == null) {
+            if (!additive) {
+                selection.clear();          // same behaviour as the old handleSelect
+            }
+            return;
+        }
+        if (wholeWire) {
+            List<String> ids = new ArrayList<>();
+            for (WireSegment s : circuit.getConnectedWires(hit)) {
+                ids.add(s.getId());
+            }
+            selection.selectWires(ids, additive);
+        } else {
+            selection.selectWire(hit.getId(), additive);
+        }
+    }
+
+    public WireSegment findNearestWire(double x, double y) {
+        WireSegment best = null;
+        double bestDist = WIRE_SELECT_THRESHOLD;
+        for (WireSegment seg : circuit.getWireSegments()) {
+            double d = seg.distanceToPoint(x, y);
+            if (d <= bestDist) {
+                bestDist = d;
+                best = seg;
+            }   // nearest wins near corners and junctions
+        }
+        return best;
     }
 
     private void attachSegmentEnd(WireSegment seg, PointNode currentNode, double targetX, double targetY) {
@@ -625,10 +703,39 @@ public class EditorController {
 //    public double  getDragStartY()     { return dragStartY;       }
 //    public boolean isHorizontalFirst() { return horizontalFirst;  }
 
+    public HistoryManager getHistory() {
+        return history;
+    }
+
+    private void recordChange() {
+        history.record(CircuitSerializer.snapshot(circuit));
+    }
+
+    public void resetHistory() {
+        history.reset(CircuitSerializer.snapshot(circuit));
+    }
+
     public void undo() {
+        if (drawingWire) return;           // never swap the model under an in-progress wire
+        recordChange();                    // safety net: capture any unrecorded change first
+        String prev = history.undo();
+        if (prev != null) applySnapshot(prev);
     }
 
     public void redo() {
+        if (drawingWire) return;
+        recordChange();
+        String next = history.redo();
+        if (next != null) applySnapshot(next);
+    }
+
+    private void applySnapshot(String json) {
+        CircuitSerializer.restore(json, circuit);
+        drawingWire = false;
+        dragStartPort = null;
+        dragStartNode = null;
+        selection.clear();                 // selected ids may no longer exist
+        notifyRender();                    // re-simulate and redraw
     }
 
     public void notifyRender() {

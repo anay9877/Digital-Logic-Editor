@@ -8,7 +8,7 @@ import java.util.List;
  * Used for two purposes:
  * 1. Free endpoint — a wire that ends in empty space (isJunction = false, connectedSegments.size() == 1)
  * 2. Junction      — where three or more wire segments meet (isJunction = true)
- *
+ * <p>
  * UNLIKE PORT (WHICH MOVES WITH ITS PARENT COMPONENT), A "POINTNODE" HAS ABSOLUTE
  * CANVAS COORDINATES THAT NEVER CHANGE UNLESS THE USER EXPLICITLY MOVES IT.
  */

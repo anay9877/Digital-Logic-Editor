@@ -112,13 +112,23 @@ public class CircuitSerializer {
         return GSON.toJson(dto);
     }
 
+    public static String snapshot(Circuit circuit) {
+        return toJson(circuit, null);          // null viewport: zoom/pan are not part of history
+    }
+
+    public static void restore(String json, Circuit circuit) {
+        if (json == null || json.isBlank()) return;
+        CircuitDto dto = GSON.fromJson(json, CircuitDto.class);
+        if (dto == null) return;
+        circuit.clear();                       // no counter, id or viewport resets
+        rebuildModel(dto, circuit, null);
+    }
+
     public static void fromJson(String json, Circuit circuit, ViewportManager viewport, EditorController controller) {
         if (json == null || json.isBlank()) return;
-
         CircuitDto dto = GSON.fromJson(json, CircuitDto.class);
         if (dto == null) return;
 
-        // Clear existing circuit and state
         if (controller != null) {
             controller.newCircuit();
         } else {
@@ -127,109 +137,65 @@ public class CircuitSerializer {
             WireSegment.resetId();
         }
 
-        // 1. Rebuild elements
+        rebuildModel(dto, circuit, controller);
+
+        if (viewport != null && dto.view != null) {
+            viewport.setView(dto.view.zoom, dto.view.panX, dto.view.panY);
+        }
+        if (controller != null) {
+            controller.notifyRender();
+            controller.resetHistory();         // the loaded file is the new baseline
+        }
+    }
+
+    private static void rebuildModel(CircuitDto dto, Circuit circuit, EditorController controller) {
         if (dto.elements != null) {
             for (CircuitDto.ElementDto ed : dto.elements) {
                 ComponentType type = ComponentType.valueOf(ed.type);
                 CircuitElement elem = type.create(ed.id, ed.x, ed.y);
-
                 if (elem instanceof InputElement ie && ed.props != null) {
                     String stateStr = ed.props.get("state");
-                    if (stateStr != null) {
-                        ie.setValue(SignalState.valueOf(stateStr));
-                    }
+                    if (stateStr != null) ie.setValue(SignalState.valueOf(stateStr));
                 }
-
                 circuit.addElement(elem);
-
-                if (controller != null) {
-                    int num = parseIdNumber(ed.id);
-                    controller.updateCounter(type, num);
-                }
+                if (controller != null) controller.updateCounter(type, parseIdNumber(ed.id));
             }
         }
-
-        // 2. Rebuild nodes
         if (dto.nodes != null) {
             for (CircuitDto.NodeDto nd : dto.nodes) {
-                PointNode node = new PointNode(nd.id, nd.x, nd.y);
-                circuit.addPointNode(node);
-                int num = parseIdNumber(nd.id);
-                PointNode.updateNextId(num);
+                circuit.addPointNode(new PointNode(nd.id, nd.x, nd.y));
+                PointNode.updateNextId(parseIdNumber(nd.id));
             }
         }
-
-        // 3. Rebuild wires
         if (dto.wires != null) {
             for (CircuitDto.WireDto wd : dto.wires) {
-                Port startPort = null;
-                PointNode startNode = null;
-                double x1 = 0, y1 = 0;
-
-                if (wd.from != null) {
-                    if (wd.from.element != null) {
-                        CircuitElement owner = circuit.getElement(wd.from.element);
-                        if (owner != null) {
-                            startPort = findPort(owner, wd.from.port);
-                            if (startPort != null) {
-                                x1 = startPort.getAbsX();
-                                y1 = startPort.getAbsY();
-                            }
-                        }
-                    } else if (wd.from.node != null) {
-                        startNode = findNode(circuit, wd.from.node);
-                        if (startNode != null) {
-                            x1 = startNode.getX();
-                            y1 = startNode.getY();
-                        }
-                    }
-                }
-
-                Port endPort = null;
-                PointNode endNode = null;
-                double x2 = 0, y2 = 0;
-
-                if (wd.to != null) {
-                    if (wd.to.element != null) {
-                        CircuitElement owner = circuit.getElement(wd.to.element);
-                        if (owner != null) {
-                            endPort = findPort(owner, wd.to.port);
-                            if (endPort != null) {
-                                x2 = endPort.getAbsX();
-                                y2 = endPort.getAbsY();
-                            }
-                        }
-                    } else if (wd.to.node != null) {
-                        endNode = findNode(circuit, wd.to.node);
-                        if (endNode != null) {
-                            x2 = endNode.getX();
-                            y2 = endNode.getY();
-                        }
-                    }
-                }
+                Port sp = portOf(wd.from, circuit), tp = portOf(wd.to, circuit);
+                PointNode sn = nodeOf(wd.from, circuit), tn = nodeOf(wd.to, circuit);
+                double x1 = sp != null ? sp.getAbsX() : sn != null ? sn.getX() : 0;
+                double y1 = sp != null ? sp.getAbsY() : sn != null ? sn.getY() : 0;
+                double x2 = tp != null ? tp.getAbsX() : tn != null ? tn.getX() : 0;
+                double y2 = tp != null ? tp.getAbsY() : tn != null ? tn.getY() : 0;
 
                 WireSegment seg = new WireSegment(wd.id, x1, y1, x2, y2);
-                if (startPort != null) seg.setStartPort(startPort);
-                else if (startNode != null) seg.setStartNode(startNode);
-
-                if (endPort != null) seg.setEndPort(endPort);
-                else if (endNode != null) seg.setEndNode(endNode);
-
+                if (sp != null) seg.setStartPort(sp);
+                else if (sn != null) seg.setStartNode(sn);
+                if (tp != null) seg.setEndPort(tp);
+                else if (tn != null) seg.setEndNode(tn);
                 circuit.addWireSegment(seg);
-
-                int num = parseIdNumber(wd.id);
-                WireSegment.updateNextId(num);
+                WireSegment.updateNextId(parseIdNumber(wd.id));
             }
         }
+    }
 
-        // 4. Restore viewport
-        if (viewport != null && dto.view != null) {
-            viewport.setView(dto.view.zoom, dto.view.panX, dto.view.panY);
-        }
+    private static Port portOf(CircuitDto.EndpointDto ep, Circuit c) {
+        if (ep == null || ep.element == null) return null;
+        CircuitElement owner = c.getElement(ep.element);
+        return owner == null ? null : findPort(owner, ep.port);
+    }
 
-        if (controller != null) {
-            controller.notifyRender();
-        }
+    private static PointNode nodeOf(CircuitDto.EndpointDto ep, Circuit c) {
+        if (ep == null || ep.element != null || ep.node == null) return null;
+        return findNode(c, ep.node);
     }
 
     // ── SVG Export & Import ───────────────────────────────────────────────────
@@ -391,7 +357,8 @@ public class CircuitSerializer {
         if (idx >= 0 && idx + 1 < id.length()) {
             try {
                 return Integer.parseInt(id.substring(idx + 1));
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
         }
         return 0;
     }

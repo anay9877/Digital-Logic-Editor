@@ -27,7 +27,7 @@ public abstract class Gate extends CircuitElement {
     /**
      * Reads PortSpec entries for this gate type from the registry and
      * copies the relX/relY offsets onto the matching Port objects.
-     *
+     * <p>
      * Matching is done by comparing the PortSpec localId to the port ID
      * suffix (the part after the last "-").
      */

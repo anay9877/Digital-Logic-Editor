@@ -113,16 +113,18 @@ public class WireSegment {
         return x2;
     }
 
-    public double getY2()  {
+    public double getY2() {
         return y2;
     }
 
     public PointNode getStartNode() {
         return startNode;
     }
+
     public Port getEndPort() {
         return endPort;
     }
+
     public PointNode getEndNode() {
         return endNode;
     }
@@ -130,26 +132,35 @@ public class WireSegment {
     public Port getStartPort() {
         return startPort;
     }
+
     public void setStartPort(Port p) {
-         this.startPort = p; this.startNode = null;
+        this.startPort = p;
+        this.startNode = null;
     }
+
     public void setStartNode(PointNode n) {
-        this.startNode = n; this.startPort = null;
+        this.startNode = n;
+        this.startPort = null;
     }
+
     public void setEndPort(Port p) {
-        this.endPort = p; this.endNode = null;
+        this.endPort = p;
+        this.endNode = null;
     }
+
     public void setEndNode(PointNode n) {
-        this.endNode = n; this.endPort = null;
+        this.endNode = n;
+        this.endPort = null;
     }
 
     // Signal state
 
     public SignalState getState() {
-         return state;
+        return state;
     }
+
     public void setState(SignalState state) {
-         this.state = state;
+        this.state = state;
     }
 
     // Setters -> used when we set or extend a wire segment
@@ -157,12 +168,15 @@ public class WireSegment {
     public void setX1(double x1) {
         this.x1 = x1;
     }
+
     public void setY1(double y1) {
         this.y1 = y1;
     }
+
     public void setX2(double x2) {
         this.x2 = x2;
     }
+
     public void setY2(double y2) {
         this.y2 = y2;
     }

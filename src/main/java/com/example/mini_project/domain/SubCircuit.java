@@ -7,7 +7,7 @@ import java.util.Map;
 
 /**
  * A connected component of the circuit built from the segment-based connectivity graph.
- *
+ * <p>
  * This class intentionally does not use the legacy Wire model. A circuit is represented by
  * Gates, Port connections, PointNodes, and WireSegments instead of a separate Wire
  * abstraction. This keeps sub-circuit detection and routing consistent with the current model.
@@ -38,7 +38,7 @@ public class SubCircuit {
         } else if (e instanceof OutputElement output && !outputs.contains(output)) {
             outputs.add(output);
         } else if (e instanceof Gate gate) {
-            gates.put(e.getId(), (Gate)e);
+            gates.put(e.getId(), gate);
         }
     }
 

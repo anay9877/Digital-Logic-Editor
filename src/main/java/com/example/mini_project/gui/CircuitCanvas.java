@@ -161,7 +161,7 @@ public class CircuitCanvas extends Pane {
             if (!e.isControlDown()) return;
             if (e.getDeltaY() > 0)
                 viewportManager.zoomIn();
-            else if (e.getDeltaY() < 0) 
+            else if (e.getDeltaY() < 0)
                 viewportManager.zoomOut();
             e.consume();
         });
@@ -213,14 +213,22 @@ public class CircuitCanvas extends Pane {
             if (!dragging) return;
 
             Bounds box = rubberBand.localToScene(rubberBand.getBoundsInLocal());
-            List<String> hits = new ArrayList<>();
+            List<String> elementHits = new ArrayList<>();
+            List<String> wireHits = new ArrayList<>();
             for (Node n : nodeLayer.getChildren()) {
-                if (n.getUserData() instanceof String id
-                        && n.localToScene(n.getBoundsInLocal()).intersects(box)) {
-                    hits.add(id);
+                // Ignore nodes outside the rubber band
+                if (!n.localToScene(n.getBoundsInLocal()).intersects(box)) {
+                    continue;
+                }
+                // Check whether the node represents a wire or an element
+                if (n instanceof Polyline && n.getUserData() instanceof String id) {
+                    wireHits.add(id);
+                } else if (n.getUserData() instanceof String id) {
+                    elementHits.add(id);
                 }
             }
-            controller.getSelection().selectElements(hits, e.isShiftDown() || e.isControlDown());
+            boolean additive = e.isShiftDown() || e.isControlDown();
+            controller.getSelection().selectElementsAndWires(elementHits, wireHits, additive);
         });
 
         // plain click on Canvas
@@ -236,6 +244,10 @@ public class CircuitCanvas extends Pane {
             if (comp != null && comp != ComponentType.UNKNOWN) {
                 Point2D p = contentGroup.sceneToLocal(e.getSceneX(), e.getSceneY());
                 controller.onElementPlaced(comp, p.getX(), p.getY());
+            } else if (tool == ToolbarOptions.Select) {
+                Point2D p = contentGroup.sceneToLocal(e.getSceneX(), e.getSceneY());   // wires use world coordinates
+                boolean additive = e.isShiftDown() || e.isControlDown();
+                controller.onSelectPoint(p.getX(), p.getY(), additive, e.getClickCount() >= 2);
             } else if (tool != null && tool != ToolbarOptions.Unknown && tool != ToolbarOptions.Wire) {
                 controller.optionSelected(tool, e.getX(), e.getY());
             }
@@ -265,6 +277,12 @@ public class CircuitCanvas extends Pane {
 
         toolbar.setOnZoomIn(() -> viewportManager.zoomIn());
         toolbar.setOnZoomOut(() -> viewportManager.zoomOut());
+        toolbar.setOnDelete(controller::deleteSelected); //deletion ce
+        toolbar.setOnUndo(controller::undo); //prajwal undo redo
+        toolbar.setOnRedo(controller::redo);
+        controller.getHistory().setOnChange(() -> toolbar.setHistoryState(
+                controller.getHistory().canUndo(), controller.getHistory().canRedo()));
+        toolbar.setHistoryState(controller.getHistory().canUndo(), controller.getHistory().canRedo());
     }
 
     private void onViewResized() {
@@ -341,6 +359,11 @@ public class CircuitCanvas extends Pane {
             Polyline wire = new Polyline(
                     seg.getX1(), seg.getY1(),
                     seg.getX2(), seg.getY2());
+            wire.setUserData(seg.getId());
+
+            if (controller.getSelection().isWireSelected(seg.getId())) {
+                wire.setEffect(new DropShadow(15, Color.CYAN));
+            }
 
             Color wireColor = switch (seg.getState()) {
                 case ON -> Color.web("#00c800");   // bright green — active
@@ -511,9 +534,11 @@ public class CircuitCanvas extends Pane {
     public ViewportManager getViewportManager() {
         return viewportManager;
     }
+
     public void zoomIn() {
         viewportManager.zoomIn();
     }
+
     public void zoomOut() {
         viewportManager.zoomOut();
     }
