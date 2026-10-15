@@ -18,9 +18,7 @@ public class ConnectionValidator {
         drivers.addAll(findDrivers(start, graph));
         drivers.addAll(findDrivers(end, graph));
         if (drivers.size() > 1) {
-            return "Multiple output ports are driving "
-                    + "the same wire network ("
-                    + drivers.size() + " sources).";
+            return "Multiple output ports are driving " + "the same wire network (" + drivers.size() + " sources).";
         }
         return null;
     }
@@ -69,18 +67,15 @@ public class ConnectionValidator {
         }
         return null;
     }
-    public String checkInputAlreadyConnected(
-            Circuit circuit, Object start, Object end) {
+    public String checkInputAlreadyConnected(Circuit circuit, Object start, Object end) {
         if (start instanceof Port port) {
             if (isOccupiedInput(circuit, port)) {
-                return "Input port " + port.getId()
-                        + " already has a connection.";
+                return "Input port " + port.getId() + " already has a connection.";
             }
         }
         if (end instanceof Port port) {
             if (isOccupiedInput(circuit, port)) {
-                return "Input port " + port.getId()
-                        + " already has a connection.";
+                return "Input port " + port.getId() + " already has a connection.";
             }
         }
         return null;
@@ -215,7 +210,7 @@ public class ConnectionValidator {
         }
         return points;
     }
-    public String checkWireGeometry(double x1, double y1, double x2, double y2) {
+    public String checkWireLength(double x1, double y1, double x2, double y2) {
         if (x1 == x2 && y1 == y2) {
             return "Wire cannot have zero length.";
         }

@@ -99,16 +99,32 @@ public class EditorController {
     private void handleDelete(){
     }
 
-    private void handleValidate() {
+    public List<CircuitElement> validateAndGetOrder() {
         CircuitValidator validator = new CircuitValidator();
         boolean wiresValid = validator.validateDanglingWires(circuit);
         boolean inputsValid = validator.validateInputPorts(circuit);
-        boolean iovalid = validator.validateInputsAndOutputs(circuit);
+        boolean ioValid = validator.validateInputsAndOutputs(circuit);
         boolean logicValid = validator.validateDeadLogic(circuit);
         boolean referencesValid = validator.validateWireReferences(circuit);
+        if (!(wiresValid && inputsValid && ioValid && logicValid && referencesValid)) {
+            throw new IllegalStateException(
+                "Circuit validation failed. See console for details."
+            );
+        }
+        return new CircuitTopology().sort(circuit);
+    }
 
-        if (wiresValid && inputsValid && iovalid && logicValid && referencesValid) System.out.println("Circuit validation passed");
-        else System.err.println("Circuit validation failed");
+    private void handleValidate() {
+        try {
+            List<CircuitElement> order = validateAndGetOrder();
+            System.out.println("Circuit validation passed.");
+            System.out.println("Simulation order:");
+            for (CircuitElement element : order) {
+                System.out.println(element.getId());
+            }
+        } catch (IllegalStateException ex) {
+            System.err.println("Circuit validation failed: " + ex.getMessage());
+        }
     }
     public void moveElements(Collection<String> ids, double dx, double dy){
         for(String id : ids){
@@ -246,7 +262,7 @@ public class EditorController {
         Object end = targetPort != null ? targetPort : targetNode != null ? targetNode : targetSegment;
         
         // Validate before modifying the circuit.
-        String error = connectionValidator.checkWireGeometry(dragStartX, dragStartY, mouseX, mouseY);
+        String error = connectionValidator.checkWireLength(dragStartX, dragStartY, mouseX, mouseY);
         if (error == null)
             error = connectionValidator.checkInputToInput(start, end);
         if (error == null) {
