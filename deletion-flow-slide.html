@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Circuit Deletion — Function Flow</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #182b30;
+    --muted: #596b6e;
+    --paper: #f3f5f0;
+    --line: #cbd5d0;
+    --green: #24675f;
+    --green-soft: #e5f1ec;
+    --blue: #365d91;
+    --blue-soft: #eaf0fa;
+    --gold: #a56615;
+    --gold-soft: #fff2d9;
+    --red: #a4463b;
+    --red-soft: #faece8;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: #dfe5e1; color: var(--ink); }
+  body { font-family: "Aptos", "Segoe UI", sans-serif; }
+  .slide {
+    width: min(1600px, 100vw);
+    aspect-ratio: 16 / 9;
+    margin: 0 auto;
+    padding: 38px 48px 27px;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 17px;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 96% 0%, rgba(54,93,145,.09), transparent 27%), linear-gradient(140deg, #fafbf7, var(--paper));
+  }
+  header { display: flex; justify-content: space-between; align-items: end; gap: 20px; }
+  .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; }
+  h1 { font: 700 38px/1.08 Georgia, "Times New Roman", serif; margin: 6px 0; }
+  .subtitle { margin: 0; color: var(--muted); font-size: 15px; }
+  .key { display: flex; gap: 12px; align-items: center; border: 1px solid var(--line); background: rgba(255,255,255,.8); border-radius: 7px; padding: 9px 12px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .key span { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 9px; height: 9px; border-radius: 50%; }
+  .swatch.action { background: var(--green); }
+  .swatch.decision { background: #d29324; }
+  .flow { min-height: 0; display: grid; grid-template-rows: 1.08fr 1.5fr .55fr; gap: 11px; }
+  .top, .branches { display: grid; gap: 13px; min-height: 0; }
+  .top { grid-template-columns: 1.06fr .86fr 1.12fr; }
+  .branches { grid-template-columns: 1.35fr 1fr; }
+  .card { min-width: 0; position: relative; background: rgba(255,255,255,.86); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .top .card:not(:last-child)::after { content: "→"; position: absolute; z-index: 2; right: -18px; top: 50%; transform: translateY(-50%); color: #73857e; font-size: 22px; font-weight: 700; }
+  .card-head { padding: 10px 13px; color: #fff; display: flex; align-items: center; gap: 9px; }
+  .select .card-head { background: var(--blue); }
+  .trigger .card-head { background: var(--gold); }
+  .dispatch .card-head { background: var(--green); }
+  .element .card-head { background: #405b58; }
+  .wires .card-head { background: #526a7b; }
+  .step { height: 25px; width: 25px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 50%; background: rgba(255,255,255,.2); font-size: 13px; font-weight: 800; }
+  .title { font-size: 16px; font-weight: 800; }
+  .method { font: 11px/1.25 ui-monospace, "Cascadia Code", monospace; opacity: .9; margin-top: 2px; }
+  .body { padding: 10px 13px; display: flex; flex-direction: column; gap: 7px; }
+  .path { border-left: 3px solid var(--blue); background: var(--blue-soft); padding: 6px 8px; border-radius: 0 5px 5px 0; min-width: 0; }
+  .path.green { border-color: var(--green); background: var(--green-soft); }
+  .path.gold { border-color: #d29324; background: var(--gold-soft); }
+  .path.red { border-color: var(--red); background: var(--red-soft); }
+  .path strong { display: block; font-size: 12px; margin-bottom: 2px; }
+  p { margin: 0; }
+  .desc { font-size: 11px; line-height: 1.3; color: var(--muted); }
+  code { font: 11px/1.25 ui-monospace, "Cascadia Code", monospace; color: #184f71; overflow-wrap: anywhere; }
+  .entry { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .api { padding: 6px 8px; background: #f1f4f6; border: 1px solid #e0e6e7; border-radius: 5px; }
+  .api code { display: block; }
+  .api span { display: block; color: var(--muted); font-size: 10px; line-height: 1.25; margin-top: 2px; }
+  .dispatch .body { gap: 6px; }
+  .guard { padding: 6px 8px; border-radius: 5px; background: var(--gold-soft); border: 1px solid #f0d8a7; font-size: 11px; line-height: 1.3; }
+  .guard code { color: #805112; }
+  .branches .card { display: flex; flex-direction: column; }
+  .branches .body { flex: 1; }
+  .sequence { display: grid; grid-template-columns: 1fr 20px 1fr 20px 1fr; gap: 5px; align-items: stretch; }
+  .seq { padding: 7px 8px; background: var(--green-soft); border: 1px solid #cbded5; border-radius: 5px; min-width: 0; }
+  .seq b { font-size: 11px; display: block; margin-bottom: 3px; }
+  .seq .desc { font-size: 10px; }
+  .arrow { display: grid; place-items: center; color: #71847e; font-size: 17px; font-weight: 700; }
+  .branch-foot { margin-top: auto; border-top: 1px solid #e1e8e4; padding-top: 6px; color: var(--muted); font-size: 10px; line-height: 1.3; }
+  .wire-seq { display: grid; grid-template-columns: 1fr 20px 1fr; gap: 6px; align-items: center; }
+  .wire-seq .seq { background: var(--blue-soft); border-color: #d7e1f2; }
+  .merge { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; background: #e6f2ec; border: 1px solid #c1d9ce; border-radius: 7px; padding: 8px 13px; }
+  .merge-title { font-size: 13px; font-weight: 800; color: var(--green); }
+  .merge-text { color: var(--muted); font-size: 11px; line-height: 1.3; }
+  .merge code { font-size: 10px; }
+  .merge-pill { background: #fff; border: 1px solid #cbded5; border-radius: 5px; padding: 6px 9px; white-space: nowrap; font: 11px ui-monospace, monospace; color: var(--green); }
+  footer { display: flex; justify-content: space-between; color: #687a75; font-size: 10px; }
+  @media (max-width: 1050px) {
+    .slide { aspect-ratio: auto; min-height: 100vh; padding: 25px; overflow: visible; }
+    header { display: block; }
+    .key { margin-top: 12px; width: fit-content; }
+    .flow { grid-template-rows: auto; }
+    .top, .branches { grid-template-columns: 1fr; }
+    .top .card:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -18px; transform: translateX(50%); }
+    .merge { grid-template-columns: 1fr; }
+    footer { gap: 8px; flex-direction: column; }
+  }
+  @media print {
+    @page { size: 16in 9in; margin: 0; }
+    html, body { width: 16in; height: 9in; background: white; }
+    .slide { width: 16in; height: 9in; aspect-ratio: auto; margin: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<main class="slide" aria-label="Circuit deletion function flow">
+  <header>
+    <div>
+      <div class="eyebrow">Digital Logic Editor · Function Flow</div>
+      <h1>Deleting elements and wires</h1>
+      <p class="subtitle">Selection IDs flow to the controller; Circuit removes attached topology and repairs node bookkeeping.</p>
+    </div>
+    <div class="key" aria-label="Legend">
+      <span><i class="swatch action"></i>model action</span>
+      <span><i class="swatch decision"></i>guard / decision</span>
+    </div>
+  </header>
+
+  <section class="flow" aria-label="Selection, deletion, and cleanup">
+    <div class="top">
+      <article class="card select">
+        <div class="card-head"><span class="step">1</span><div><div class="title">Select what to remove</div><div class="method">CircuitCanvas → SelectionManager</div></div></div>
+        <div class="body">
+          <div class="entry">
+            <div class="api"><code>selectElement(id, additive)</code><span>Component click; Shift/Ctrl adds or toggles selection.</span></div>
+            <div class="api"><code>onSelectPoint(...) → selectWire(...)</code><span>Wire click selects one segment; double-click selects connected wires.</span></div>
+          </div>
+          <p class="desc">SelectionManager stores element IDs and wire IDs. Its change callback redraws selection highlighting.</p>
+        </div>
+      </article>
+
+      <article class="card trigger">
+        <div class="card-head"><span class="step">2</span><div><div class="title">Invoke Delete</div><div class="method">Toolbar button or keyboard</div></div></div>
+        <div class="body">
+          <div class="api"><code>EditorToolbar → onDelete.run()</code><span>Callback is wired to controller::deleteSelected.</span></div>
+          <div class="api"><code>EditorWindow → controller.deleteSelected()</code><span>Delete or Backspace key path.</span></div>
+        </div>
+      </article>
+
+      <article class="card dispatch">
+        <div class="card-head"><span class="step">3</span><div><div class="title">Dispatch selected IDs</div><div class="method">EditorController.deleteSelected()</div></div></div>
+        <div class="body">
+          <div class="guard">If <code>drawingWire</code> → return. If no selected IDs → return.</div>
+          <p class="desc">Read <code>getSelectedElements()</code> and <code>getSelectedWires()</code>.</p>
+          <p class="desc">Element IDs → <code>onElementDeleted(id)</code> → <code>Circuit.removeElement(id)</code></p>
+          <p class="desc">Wire IDs → <code>Circuit.removeWireSegments(wireIds)</code></p>
+        </div>
+      </article>
+    </div>
+
+    <div class="branches">
+      <article class="card element">
+        <div class="card-head"><span class="step">4A</span><div><div class="title">Element removal cascades through connected nodes</div><div class="method">Circuit.removeElement(id)</div></div></div>
+        <div class="body">
+          <div class="sequence">
+            <div class="seq"><b>Seed attached segments</b><p class="desc">Scan wires; <code>belongsTo(port, id)</code> checks whether a Port owner is the deleted element.</p></div>
+            <div class="arrow">→</div>
+            <div class="seq"><b>BFS through PointNodes</b><p class="desc">Queue segments; visit each endpoint node's <code>getConnectedSegments()</code>. A Port endpoint stops traversal.</p></div>
+            <div class="arrow">→</div>
+            <div class="seq"><b>Remove and repair</b><p class="desc"><code>wireSegments.removeAll(doomed)</code>; call node <code>removeSegment(...)</code>; prune empty nodes.</p></div>
+          </div>
+          <p class="branch-foot">Unknown element ID returns false. The BFS uses a set to avoid processing a segment twice.</p>
+        </div>
+      </article>
+
+      <article class="card wires">
+        <div class="card-head"><span class="step">4B</span><div><div class="title">Explicit wire selection</div><div class="method">Circuit.removeWireSegments(ids)</div></div></div>
+        <div class="body">
+          <div class="wire-seq">
+            <div class="seq"><b>Remove matching IDs</b><p class="desc">Unknown and already-cascaded IDs are skipped.</p></div>
+            <div class="arrow">→</div>
+            <div class="seq"><b>Update endpoints</b><p class="desc">Call <code>removeSegment(...)</code> on connected nodes; prune nodes with no segments.</p></div>
+          </div>
+          <p class="branch-foot">Direct wire deletion removes only the selected segment IDs; element deletion performs the connected-node cascade.</p>
+        </div>
+      </article>
+    </div>
+
+    <div class="merge" aria-label="Common completion path">
+      <div><div class="merge-title">5 · Finish and refresh</div><p class="merge-text"><code>selection.clear()</code> → if changed: <code>notifyRender()</code> redraws the canvas, then <code>recordChange()</code> stores the history snapshot.</p></div>
+      <div class="arrow">→</div>
+      <div class="merge-pill">Updated Circuit + consistent PointNodes</div>
+    </div>
+  </section>
+
+  <footer><span>Component selection: click · additive: Shift/Ctrl · wire selection: click segment / double-click connected wires</span><span>Element deletion follows PointNode links; selected-wire deletion removes selected IDs only.</span></footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,21 @@
+DRAG (visual only)   icon.setOnMouseDragged
+                       └─ n.setTranslateX/Y(dx, dy)          // only the icon moves, model not touched
+
+RELEASE              icon.setOnMouseReleased
+  └─ controller.moveElements(dragIds, dx, dy)
+       for each id:
+       ├─ CircuitCanvas.snap()
+       ├─ e.setPosition(newX, newY)                          // model moves now
+       └─ onComponentMoved(e)                                // ← the rerouting
+            ├─ getAllPorts(e)
+            ├─ for each port p:
+            │    ├─ scan circuit.getWireSegments()           // find attached segments
+            │    └─ for each attached segment, ONE of 3 cases:
+            │         1. corner follows      (otherNode.setX / setY, seg.setX*/Y*)
+            │         2. already aligned     (seg.setX1/Y1 or setX2/Y2)
+            │         3. add an L-bend       (new PointNode, addPointNode, addSegment,
+            │                                  WireSegment.nodeToPort / portToNode / nodeToNode,
+            │                                  circuit.addWireSegment)
+       ├─ notifyRender()  → canvas.render()
+       └─ recordChange()  → history.record(snapshot)
+  └─ render()                                                // canvas redraws once more

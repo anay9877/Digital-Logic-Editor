@@ -1,0 +1,21 @@
+MOUSE PRESS    CircuitCanvas.setOnMousePressed
+  └─ controller.onWireMousePressed(x, y)
+       ├─ CircuitCanvas.snap()
+       ├─ findPortAt()          ← getAllPorts()
+       ├─ findNodeAt()
+       └─ findWireSegmentAt()   ← seg.distanceToPoint()
+            └─ circuit.splitSegmentAtJunction()      (only if a wire body is hit)
+
+MOUSE DRAG     CircuitCanvas.setOnMouseDragged       (repeats many times)
+  └─ controller.onWireMouseDragged(x, y)   → returns points for the preview line
+
+MOUSE RELEASE  CircuitCanvas.setOnMouseReleased
+  └─ controller.onWireMouseReleased(x, y)
+       ├─ handleWireRelease(x, y)
+       │    ├─ attachSegmentEnd() / updateSegmentNode()   (extend case)
+       │    ├─ createAndAddSegment()
+       │    │    ├─ findPortAt / findNodeAt / findWireSegmentAt
+       │    │    ├─ WireSegment.portToPort / nodeToPort / portToNode / nodeToNode
+       │    │    └─ circuit.addWireSegment(seg) → node.addSegment(seg)
+       │    └─ notifyRender() → canvas.render()
+       └─ recordChange()   (in finally) → history.record(snapshot)
