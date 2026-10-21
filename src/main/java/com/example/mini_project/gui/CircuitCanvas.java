@@ -28,25 +28,14 @@ import java.util.Set;
  */
 public class CircuitCanvas extends Pane {
 
-    // ── Grid Constants & Snapping ─────────────────────────────────────────────
+    // Grid Constants & Snapping
     public static final double GRID_SIZE = 20.0;
 
-    /**
-     * Rounds {@code v} to the nearest grid line.
-     */
     public static double snap(double v) {
         return Math.round(v / GRID_SIZE) * GRID_SIZE;
     }
 
-    public static double snapX(double x) {
-        return snap(x);
-    }
-
-    public static double snapY(double y) {
-        return snap(y);
-    }
-
-    // ── Constants ─────────────────────────────────────────────────────────────
+    // Constants
     private static final double PORT_RADIUS = 5.0;
     private static final double JUNCTION_RADIUS = 6.0;
     private static final double WIRE_WIDTH = 2.0;
@@ -56,7 +45,7 @@ public class CircuitCanvas extends Pane {
     private static final Color COLOR_JUNCTION = Color.web("#000");
     private static final Color COLOR_PREVIEW = Color.web("#000");
 
-    // ── Fields ────────────────────────────────────────────────────────────────
+    // Fields
     private final EditorController controller;
 
     // Viewport grouping: contentGroup holds the circuit nodes and is zoomed / panned as one unit.
@@ -77,9 +66,7 @@ public class CircuitCanvas extends Pane {
     private double lastMousePosition_X;
     private double lastMousePosition_Y;
 
-    /**
-     * The live preview line shown while the user drags a wire.
-     */
+    // The live preview line shown while the user drags a wire.
     private Polyline previewLine = null;
 
     // Selection (rubber band)
@@ -92,7 +79,6 @@ public class CircuitCanvas extends Pane {
     private double dragStartX, dragStartY;
     private boolean moving = false;
 
-    // ── Constructor ───────────────────────────────────────────────────────────
     public CircuitCanvas(EditorController controller) {
         this.controller = controller;
         setStyle("-fx-background-color: white;");
@@ -124,7 +110,7 @@ public class CircuitCanvas extends Pane {
         widthProperty().addListener((o, a, b) -> onViewResized());
         heightProperty().addListener((o, a, b) -> onViewResized());
 
-        // ── ONE handler per event type. Each one branches on button / active tool. ──
+        // ONE handler per event type. Each one branches on button / active tool.
 
         setOnMousePressed(e -> {
             pressedOnEmpty = false;
@@ -207,7 +193,7 @@ public class CircuitCanvas extends Pane {
                 return;
             }
 
-            if (!pressedOnEmpty) return;                           // finish rubber band
+                if (!pressedOnEmpty) return;                           // finish rubber band
             pressedOnEmpty = false;
             rubberBand.setVisible(false);
             if (!dragging) return;
@@ -249,7 +235,7 @@ public class CircuitCanvas extends Pane {
                 boolean additive = e.isShiftDown() || e.isControlDown();
                 controller.onSelectPoint(p.getX(), p.getY(), additive, e.getClickCount() >= 2);
             } else if (tool != null && tool != ToolbarOptions.Unknown && tool != ToolbarOptions.Wire) {
-                controller.optionSelected(tool, e.getX(), e.getY());
+                controller.optionSelected(tool);
             }
             render();
         });
@@ -277,7 +263,8 @@ public class CircuitCanvas extends Pane {
 
         toolbar.setOnZoomIn(() -> viewportManager.zoomIn());
         toolbar.setOnZoomOut(() -> viewportManager.zoomOut());
-        toolbar.setOnDelete(controller::deleteSelected); //deletion ce
+        toolbar.setOnDelete(controller::deleteSelected); //deletion
+        toolbar.setOnSimulate(controller::runSimulation);
         toolbar.setOnUndo(controller::undo); //prajwal undo redo
         toolbar.setOnRedo(controller::redo);
         controller.getHistory().setOnChange(() -> toolbar.setHistoryState(
@@ -326,11 +313,8 @@ public class CircuitCanvas extends Pane {
         }
     }
 
-    // ── Rendering ─────────────────────────────────────────────────────────────
-
-    /**
-     * Full redraw of circuit elements. Called after any state change.
-     */
+    // Rendering
+    // Full redraw of circuit elements. Called after any state change.
     public void render() {
         nodeLayer.getChildren().clear();
 
@@ -352,8 +336,7 @@ public class CircuitCanvas extends Pane {
         }
     }
 
-    // ── Layer 1: Wire segments ─────────────────────────────────────────────────
-
+    // Layer 1: Wire segments
     private void renderWireSegments() {
         for (WireSegment seg : controller.getCircuit().getWireSegments()) {
             Polyline wire = new Polyline(
@@ -452,11 +435,6 @@ public class CircuitCanvas extends Pane {
                 // Normal component selection
                 if (!isSelectToolActive()) return;
                 ev.consume();
-                if (!ev.isStillSincePress()) return;
-                if (elem instanceof InputElement input) {
-                    controller.toggleInput(input);
-                    return;
-                }
                 boolean additive = ev.isShiftDown() || ev.isControlDown();
                 controller.getSelection().selectElement(elem.getId(), additive);
             });

@@ -343,61 +343,29 @@ public class SvgIconRegistry {
     private static final String LED_ON_SVG = """
             <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
             <!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
-            <svg width="800px" height="800px" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="#000000">
-                <g id="SVGRepo_bgCarrier" stroke-width="0"/>
-                <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
-                <g id="SVGRepo_iconCarrier">
-                    <defs>
-                    <radialGradient id="rGlow" cx="256" cy="171" r="171" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stop-color="#FF3B30" stop-opacity="0.6"/>
-                        <stop offset="60%" stop-color="#FF3B30" stop-opacity="0.2"/>
-                        <stop offset="100%" stop-color="#FF3B30" stop-opacity="0"/>
-                    </radialGradient>
-                    <linearGradient id="rDome" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stop-color="#FF453A"/>
-                        <stop offset="30%" stop-color="#FF9F9A"/>
-                        <stop offset="70%" stop-color="#FF3B30"/>
-                        <stop offset="100%" stop-color="#D70015"/>
-                    </linearGradient>
-                    </defs>
-                    <circle cx="256" cy="171" r="171" fill="url(#rGlow)"/>
-                    <line x1="210" y1="363" x2="210" y2="491" stroke="#A6B1B9" stroke-width="13" stroke-linecap="round"/>
-                    <line x1="302" y1="363" x2="302" y2="469" stroke="#A6B1B9" stroke-width="13" stroke-linecap="round"/>
-                    <path d="M142 213 C142 94 370 94 370 213 L370 333 L142 333 Z" fill="url(#rDome)"/>
-                    <rect x="125" y="333" width="262" height="30" rx="9" fill="#D70015"/>
-                    <path d="M216 222 L216 179 L245 179 L256 205 Z" fill="#FFE5E5" opacity="0.8"/>
-                    <path d="M285 222 L285 196 L262 196" stroke="#FFE5E5" stroke-width="6.4" fill="none" opacity="0.8"/>
-                    <ellipse cx="188" cy="149" rx="13" ry="43" transform="rotate(-25 188 149)" fill="#FFFFFF" opacity="0.6"/>
-                </g>
+            <svg version="1.0" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="800px" height="800px" viewBox="0 0 64 64" enable-background="new 0 0 64 64" xml:space="preserve" fill="#ffffff">
+            
+            <g id="SVGRepo_bgCarrier" stroke-width="0"/>
+            
+            <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
+            
+            <g id="SVGRepo_iconCarrier"> <g> <g> <path fill="#000" d="M40,56H24c-2.211,0-4,1.789-4,4s1.789,4,4,4h16c2.211,0,4-1.789,4-4S42.211,56,40,56z"/> <path fill="#000" d="M32,0C16.539,0,4,12.539,4,28c0,9.445,4.695,17.781,11.863,22.844C16.438,51.25,17.375,52,20,52 s21.812,0,24,0s3.559-0.742,4.133-1.148C55.305,45.781,60,37.445,60,28C60,12.539,47.461,0,32,0z M43.891,44H36V28 c0-2.211-1.789-4-4-4s-4,1.789-4,4v16h-7.891C15.215,40.359,12,34.578,12,28c0-11.047,8.953-20,20-20s20,8.953,20,20 C52,34.578,48.785,40.359,43.891,44z"/> </g> <path fill="#e5a50a" d="M43.891,44H36V28c0-2.211-1.789-4-4-4s-4,1.789-4,4v16h-7.891C15.215,40.359,12,34.578,12,28 c0-11.047,8.953-20,20-20s20,8.953,20,20C52,34.578,48.785,40.359,43.891,44z"/> </g> </g>
+            
             </svg>
-
             """;
 
     private static final String LED_OFF_SVG = """
             <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
             <!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
-            <svg width="800px" height="800px" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="#000000">
-                <g id="SVGRepo_bgCarrier" stroke-width="0"/>
-                <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
-                <g id="SVGRepo_iconCarrier">
-                    <defs>
-                    <linearGradient id="rDomeOff" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stop-color="#5B1617"/>
-                        <stop offset="30%" stop-color="#8E2325"/>
-                        <stop offset="70%" stop-color="#5B1617"/>
-                        <stop offset="100%" stop-color="#3D0C0D"/>
-                    </linearGradient>
-                    </defs>
-                    <line x1="210" y1="363" x2="210" y2="491" stroke="#7A8288" stroke-width="13" stroke-linecap="round"/>
-                    <line x1="302" y1="363" x2="302" y2="469" stroke="#7A8288" stroke-width="13" stroke-linecap="round"/>
-                    <path d="M142 213 C142 94 370 94 370 213 L370 333 L142 333 Z" fill="url(#rDomeOff)"/>
-                    <rect x="125" y="333" width="262" height="30" rx="9" fill="#3D0C0D"/>
-                    <path d="M216 222 L216 179 L245 179 L256 205 Z" fill="#401011"/>
-                    <path d="M285 222 L285 196 L262 196" stroke="#401011" stroke-width="6.4" fill="none"/>
-                    <ellipse cx="188" cy="149" rx="13" ry="43" transform="rotate(-25 188 149)" fill="#FFFFFF" opacity="0.2"/>
-                </g>
+            <svg version="1.0" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="800px" height="800px" viewBox="0 0 64 64" enable-background="new 0 0 64 64" xml:space="preserve" fill="#ffffff" stroke="#ffffff">
+            
+            <g id="SVGRepo_bgCarrier" stroke-width="0"/>
+            
+            <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
+            
+            <g id="SVGRepo_iconCarrier"> <g> <g> <path fill="#000" d="M40,56H24c-2.211,0-4,1.789-4,4s1.789,4,4,4h16c2.211,0,4-1.789,4-4S42.211,56,40,56z"/> <path fill="#000" d="M32,0C16.539,0,4,12.539,4,28c0,9.445,4.695,17.781,11.863,22.844C16.438,51.25,17.375,52,20,52 s21.812,0,24,0s3.559-0.742,4.133-1.148C55.305,45.781,60,37.445,60,28C60,12.539,47.461,0,32,0z M43.891,44H36V28 c0-2.211-1.789-4-4-4s-4,1.789-4,4v16h-7.891C15.215,40.359,12,34.578,12,28c0-11.047,8.953-20,20-20s20,8.953,20,20 C52,34.578,48.785,40.359,43.891,44z"/> </g> <path fill="#fff00000" d="M43.891,44H36V28c0-2.211-1.789-4-4-4s-4,1.789-4,4v16h-7.891C15.215,40.359,12,34.578,12,28 c0-11.047,8.953-20,20-20s20,8.953,20,20C52,34.578,48.785,40.359,43.891,44z"/> </g> </g>
+            
             </svg>
-
             """;
 
     // ── Icon loading ──────────────────────────────────────────────────────────
@@ -516,7 +484,7 @@ public class SvgIconRegistry {
             );
             // LED: input on the tip of the long (anode) lead -> (30, 60) px
             case LED -> List.of(
-                    new PortSpec("in0", PortType.INPUT, 30.0, 60.0)
+                    new PortSpec("in0", PortType.INPUT, 61.5, 60.0)
             );
             default -> List.of();
         };

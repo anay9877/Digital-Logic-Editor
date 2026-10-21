@@ -5,6 +5,7 @@ import com.example.mini_project.gui.CircuitCanvas;
 import com.example.mini_project.gui.ToolbarOptions;
 import com.example.mini_project.validation.*;
 import com.example.mini_project.persistence.CircuitSerializer;
+import com.example.mini_project.validation.CircuitSimulator;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -29,6 +30,9 @@ public class EditorController {
     private double dragStartX, dragStartY;
     private boolean horizontalFirst = true;
     private boolean bendDirectionLocked = false;
+    private CircuitSimulator simulator;
+    private boolean simulating = false;
+    private boolean isValidated = false;
 
     private CircuitCanvas canvas;
 
@@ -66,6 +70,7 @@ public class EditorController {
         if (canvas != null && canvas.getViewportManager() != null) {
             canvas.getViewportManager().resetView();
         }
+        stopSimulation();
         notifyRender();
     }
 
@@ -79,6 +84,7 @@ public class EditorController {
         counters.put(type, n);
         String id = type.name() + "-" + n;
         circuit.addElement(type.create(id, CircuitCanvas.snap(x), CircuitCanvas.snap(y)));
+        stopSimulation();
 //        notifyRender();
         recordChange();
     }
@@ -90,11 +96,12 @@ public class EditorController {
     }
 
     // Tells which option is selected from toolbar(implemented just for select and delete)
-    public void optionSelected(ToolbarOptions option, double x, double y) {
+    public void optionSelected(ToolbarOptions option) {
         switch (option) {
             case Select -> selection.clear();
             case Delete -> handleDelete();
             case Validate -> handleValidate();
+            case Simulate -> runSimulation();
         }
     }
 
@@ -116,6 +123,7 @@ public class EditorController {
 
         selection.clear();
         if (changed) {
+            stopSimulation();
             notifyRender();
             recordChange();
         }
@@ -137,7 +145,36 @@ public class EditorController {
                     "Circuit validation failed. See console for details."
             );
         }
+        isValidated = true;
         return new CircuitTopology().sort(circuit);
+    }
+
+    public void runSimulation() {
+        try {
+            List<CircuitElement> order = validateAndGetOrder();
+            simulator = new CircuitSimulator(circuit, order);
+            simulating = true;
+            printLedOutputs(order);
+            notifyRender();            // redraws LEDs: ON -> LED_ON_SVG, OFF -> LED_OFF_SVG
+        } catch (IllegalStateException ex) {
+            System.err.println("Cannot simulate: " + ex.getMessage());
+            simulating = false;
+            simulator = null;
+        }
+    }
+
+    private void printLedOutputs(List<CircuitElement> order) {
+        System.out.println("---- Simulation result ----");
+        for (CircuitElement element : order) {
+            if (element instanceof OutputElement led) {
+                System.out.println(led.getId() + " is " + led.getValue());
+            }
+        }
+    }
+
+    private void stopSimulation() {
+        simulating = false;
+        simulator = null;
     }
 
     private void handleValidate() {
@@ -167,6 +204,7 @@ public class EditorController {
             }
         }
         if (changed) {
+            stopSimulation();
             notifyRender();
             recordChange();
         }
@@ -264,6 +302,7 @@ public class EditorController {
         try {
             handleWireRelease(mouseX, mouseY);
         } finally {
+            stopSimulation();
             recordChange();                // runs on every exit path of the old method
         }
     }
@@ -584,7 +623,6 @@ public class EditorController {
     // ── Component movement — stretch attached wire segments ───────────────────
 
     public void onComponentMoved(CircuitElement element) {
-        SvgIconRegistry registry = new SvgIconRegistry();
         List<Port> ports = getAllPorts(element);
 
         for (Port p : ports) {
@@ -735,6 +773,7 @@ public class EditorController {
         dragStartPort = null;
         dragStartNode = null;
         selection.clear();                 // selected ids may no longer exist
+        stopSimulation();
         notifyRender();                    // re-simulate and redraw
     }
 
