@@ -23,33 +23,29 @@ import java.util.Set;
 /**
  * Mouse's left button  --> select / rubber band / drag elements / draw wires
  * Mouse's right button --> pan the view
- *
+ * <p>
  * The main drawing surface for the circuit editor.
  */
 public class CircuitCanvas extends Pane {
 
-    // ── Grid Constants & Snapping ─────────────────────────────────────────────
+    // Grid Constants & Snapping
     public static final double GRID_SIZE = 20.0;
 
-    /** Rounds {@code v} to the nearest grid line. */
     public static double snap(double v) {
         return Math.round(v / GRID_SIZE) * GRID_SIZE;
     }
 
-    public static double snapX(double x) { return snap(x); }
-    public static double snapY(double y) { return snap(y); }
-
-    // ── Constants ─────────────────────────────────────────────────────────────
-    private static final double PORT_RADIUS     = 5.0;
+    // Constants
+    private static final double PORT_RADIUS = 5.0;
     private static final double JUNCTION_RADIUS = 6.0;
-    private static final double WIRE_WIDTH      = 2.0;
+    private static final double WIRE_WIDTH = 2.0;
 
-    private static final Color COLOR_PORT_IDLE   = Color.web("#4caf50");
-    private static final Color COLOR_PORT_HOVER  = Color.web("#00e5ff");
-    private static final Color COLOR_JUNCTION    = Color.web("#000");
-    private static final Color COLOR_PREVIEW     = Color.web("#000");
+    private static final Color COLOR_PORT_IDLE = Color.web("#4caf50");
+    private static final Color COLOR_PORT_HOVER = Color.web("#00e5ff");
+    private static final Color COLOR_JUNCTION = Color.web("#000");
+    private static final Color COLOR_PREVIEW = Color.web("#000");
 
-    // ── Fields ────────────────────────────────────────────────────────────────
+    // Fields
     private final EditorController controller;
 
     // Viewport grouping: contentGroup holds the circuit nodes and is zoomed / panned as one unit.
@@ -70,7 +66,7 @@ public class CircuitCanvas extends Pane {
     private double lastMousePosition_X;
     private double lastMousePosition_Y;
 
-    /** The live preview line shown while the user drags a wire. */
+    // The live preview line shown while the user drags a wire.
     private Polyline previewLine = null;
 
     // Selection (rubber band)
@@ -83,7 +79,6 @@ public class CircuitCanvas extends Pane {
     private double dragStartX, dragStartY;
     private boolean moving = false;
 
-    // ── Constructor ───────────────────────────────────────────────────────────
     public CircuitCanvas(EditorController controller) {
         this.controller = controller;
         setStyle("-fx-background-color: white;");
@@ -115,7 +110,7 @@ public class CircuitCanvas extends Pane {
         widthProperty().addListener((o, a, b) -> onViewResized());
         heightProperty().addListener((o, a, b) -> onViewResized());
 
-        // ── ONE handler per event type. Each one branches on button / active tool. ──
+        // ONE handler per event type. Each one branches on button / active tool.
 
         setOnMousePressed(e -> {
             pressedOnEmpty = false;
@@ -148,7 +143,14 @@ public class CircuitCanvas extends Pane {
             startX = e.getX();
             startY = e.getY();
         });
-
+        setOnScroll(e -> {
+            if (!e.isControlDown()) return;
+            if (e.getDeltaY() > 0)
+                viewportManager.zoomIn();
+            else if (e.getDeltaY() < 0)
+                viewportManager.zoomOut();
+            e.consume();
+        });
         setOnMouseDragged(e -> {
             if (e.isSecondaryButtonDown()) {                       // pan
                 double dx = e.getX() - lastMousePosition_X;
@@ -191,23 +193,33 @@ public class CircuitCanvas extends Pane {
                 return;
             }
 
-            if (!pressedOnEmpty) return;                           // finish rubber band
+                if (!pressedOnEmpty) return;                           // finish rubber band
             pressedOnEmpty = false;
             rubberBand.setVisible(false);
             if (!dragging) return;
 
             Bounds box = rubberBand.localToScene(rubberBand.getBoundsInLocal());
-            List<String> hits = new ArrayList<>();
+            List<String> elementHits = new ArrayList<>();
+            List<String> wireHits = new ArrayList<>();
             for (Node n : nodeLayer.getChildren()) {
-                if (n.getUserData() instanceof String id
-                        && n.localToScene(n.getBoundsInLocal()).intersects(box)) {
-                    hits.add(id);
+                // Ignore nodes outside the rubber band
+                if (!n.localToScene(n.getBoundsInLocal()).intersects(box)) {
+                    continue;
+                }
+                // Check whether the node represents a wire or an element
+                if (n instanceof Polyline && n.getUserData() instanceof String id) {
+                    wireHits.add(id);
+                } else if (n.getUserData() instanceof String id) {
+                    elementHits.add(id);
                 }
             }
-            controller.getSelection().selectElements(hits, e.isShiftDown() || e.isControlDown());
+            boolean additive = e.isShiftDown() || e.isControlDown();
+            controller.getSelection().selectElementsAndWires(elementHits, wireHits, additive);
         });
 
-        // plain click
+        // plain click on Canvas
+        // If Palette is selected then place the element
+        // If controller is selected then
         setOnMouseClicked(e -> {
             if (!e.isStillSincePress() || e.getButton() != MouseButton.PRIMARY) return;
             if (paletteRef == null || toolbarRef == null) return;
@@ -223,7 +235,7 @@ public class CircuitCanvas extends Pane {
                 boolean additive = e.isShiftDown() || e.isControlDown();
                 controller.onSelectPoint(p.getX(), p.getY(), additive, e.getClickCount() >= 2);
             } else if (tool != null && tool != ToolbarOptions.Unknown && tool != ToolbarOptions.Wire) {
-                controller.optionSelected(tool, e.getX(), e.getY());
+                controller.optionSelected(tool);
             }
             render();
         });
@@ -251,7 +263,8 @@ public class CircuitCanvas extends Pane {
 
         toolbar.setOnZoomIn(() -> viewportManager.zoomIn());
         toolbar.setOnZoomOut(() -> viewportManager.zoomOut());
-        toolbar.setOnDelete(controller::deleteSelected); //deletion ce
+        toolbar.setOnDelete(controller::deleteSelected); //deletion
+        toolbar.setOnSimulate(controller::runSimulation);
         toolbar.setOnUndo(controller::undo); //prajwal undo redo
         toolbar.setOnRedo(controller::redo);
         controller.getHistory().setOnChange(() -> toolbar.setHistoryState(
@@ -300,11 +313,8 @@ public class CircuitCanvas extends Pane {
         }
     }
 
-    // ── Rendering ─────────────────────────────────────────────────────────────
-
-    /**
-     * Full redraw of circuit elements. Called after any state change.
-     */
+    // Rendering
+    // Full redraw of circuit elements. Called after any state change.
     public void render() {
         nodeLayer.getChildren().clear();
 
@@ -326,17 +336,21 @@ public class CircuitCanvas extends Pane {
         }
     }
 
-    // ── Layer 1: Wire segments ─────────────────────────────────────────────────
-
+    // Layer 1: Wire segments
     private void renderWireSegments() {
         for (WireSegment seg : controller.getCircuit().getWireSegments()) {
             Polyline wire = new Polyline(
                     seg.getX1(), seg.getY1(),
                     seg.getX2(), seg.getY2());
+            wire.setUserData(seg.getId());
+
+            if (controller.getSelection().isWireSelected(seg.getId())) {
+                wire.setEffect(new DropShadow(15, Color.CYAN));
+            }
 
             Color wireColor = switch (seg.getState()) {
-                case ON      -> Color.web("#00c800");   // bright green — active
-                case OFF     -> Color.web("#404040");   // dark gray    — inactive
+                case ON -> Color.web("#00c800");   // bright green — active
+                case OFF -> Color.web("#404040");   // dark gray    — inactive
                 case UNKNOWN -> Color.web("#000000");   // black        — unknown / undriven
             };
             wire.setStroke(wireColor);
@@ -403,17 +417,27 @@ public class CircuitCanvas extends Pane {
             });
 
             icon.setOnMouseClicked(ev -> {
-                if (ev.getButton() != MouseButton.PRIMARY || !isSelectToolActive()) return;
-                ev.consume();
+                if (ev.getButton() != MouseButton.PRIMARY) return;
                 if (!ev.isStillSincePress()) return;
                 if (elem instanceof InputElement input) {
-                    controller.toggleInput(input);
+                    input.toggle();
+                    ev.consume();
+                    if (isSelectToolActive()) {
+                        boolean additive =
+                                ev.isShiftDown() || ev.isControlDown();
+                        controller.getSelection()
+                                .selectElement(elem.getId(), additive);
+                    } else {
+                        render();
+                    }
                     return;
                 }
+                // Normal component selection
+                if (!isSelectToolActive()) return;
+                ev.consume();
                 boolean additive = ev.isShiftDown() || ev.isControlDown();
                 controller.getSelection().selectElement(elem.getId(), additive);
             });
-
             nodeLayer.getChildren().add(icon);
         }
     }
@@ -487,5 +511,13 @@ public class CircuitCanvas extends Pane {
 
     public ViewportManager getViewportManager() {
         return viewportManager;
+    }
+
+    public void zoomIn() {
+        viewportManager.zoomIn();
+    }
+
+    public void zoomOut() {
+        viewportManager.zoomOut();
     }
 }

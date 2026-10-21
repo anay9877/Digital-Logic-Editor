@@ -21,17 +21,17 @@ public class SelectionManager {
         fire();
     }
 
-    public void selectElements(Collection<String> ids, boolean additive){
-        if(!additive) 
-        clearSilently();
+    public void selectElements(Collection<String> ids, boolean additive) {
+        if (!additive)
+            clearSilently();
         selectedElements.addAll(ids);
         fire();
     }
 
     public void selectWire(String id, boolean additive) {
-        if(!additive)
+        if (!additive)
             clearSilently();
-        if(!selectedWires.add(id) && additive)
+        if (!selectedWires.add(id) && additive)
             selectedWires.remove(id);
         fire();
     }
@@ -63,6 +63,15 @@ public class SelectionManager {
         return Set.copyOf(selectedWires);     // snapshot, safe to loop over while deleting
     }
 
+    public void selectElementsAndWires(Collection<String> elementIds, Collection<String> wireIds, boolean additive) {
+        if (!additive) {
+            selectedElements.clear();
+            selectedWires.clear();
+        }
+        selectedElements.addAll(elementIds);
+        selectedWires.addAll(wireIds);
+        fire();
+    }
 
     private void clearSilently() {
         selectedElements.clear();

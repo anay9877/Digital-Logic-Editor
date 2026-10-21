@@ -18,6 +18,10 @@ import javafx.scene.input.KeyCodeCombination;
 import javafx.stage.FileChooser;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
+import javafx.stage.FileChooser;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseButton;
 
 public class EditorWindow extends Application {
 
@@ -44,6 +48,14 @@ public class EditorWindow extends Application {
         palette.setStyle("-fx-padding: 10; -fx-spacing: 6; -fx-background-color: #eeeeee;");
 
         Scene scene = new Scene(root, 1200, 700);
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+            if (!e.isControlDown()) return;
+            if (e.getCode() == KeyCode.PLUS || e.getCode() == KeyCode.ADD)
+                canvas.zoomIn();
+            else if (e.getCode() == KeyCode.SUBTRACT || e.getCode() == KeyCode.MINUS)
+                canvas.zoomOut();
+            e.consume();
+        });
         // Removing the elements selected from the list when ESC key is pressed -> basically calls clear() method from SelectionManager
         scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
             if (e.getCode() == KeyCode.ESCAPE) {
@@ -52,7 +64,8 @@ public class EditorWindow extends Application {
                 controller.deleteSelected();
                 e.consume();
             } else if (e.isShortcutDown() && e.getCode() == KeyCode.Z) {
-                if (e.isShiftDown()) controller.redo(); else controller.undo();
+                if (e.isShiftDown()) controller.redo();
+                else controller.undo();
                 e.consume();
             } else if (e.isShortcutDown() && e.getCode() == KeyCode.Y) {
                 controller.redo();
@@ -203,7 +216,7 @@ public class EditorWindow extends Application {
 
     // The exception thrown is caught and showError function is called
     private void showError(String title, String message) {
-        Alert alert = new Alert(javafx.scene.control.Alert.AlertType.ERROR);
+        Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Error");
         alert.setHeaderText(title);
         alert.setContentText(message);

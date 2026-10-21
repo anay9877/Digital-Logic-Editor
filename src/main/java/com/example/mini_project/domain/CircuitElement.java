@@ -16,9 +16,11 @@ public abstract class CircuitElement {
     public String getId() {
         return id;
     }
+
     public double getX() {
         return x;
     }
+
     public double getY() {
         return y;
     }
@@ -28,7 +30,7 @@ public abstract class CircuitElement {
         this.y = y;
     }
 
-    public void moveBy(double dx, double dy){
+    public void moveBy(double dx, double dy) {
         this.x += dx;
         this.y += dy;
     }

@@ -4,7 +4,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 
 public class HistoryManager {
-    private static final int  MAX_STEPS = 100;
+    private static final int MAX_STEPS = 100;
     private static final long MAX_CHARS = 50_000_000L;
 
     private final Deque<String> undoStack = new ArrayDeque<>();
@@ -13,10 +13,14 @@ public class HistoryManager {
     private long undoChars;
     private Runnable onChange;
 
-    public void setOnChange(Runnable r) { this.onChange = r; }
+    public void setOnChange(Runnable r) {
+        this.onChange = r;
+    }
 
     public void reset(String baseline) {
-        undoStack.clear(); redoStack.clear(); undoChars = 0;
+        undoStack.clear();
+        redoStack.clear();
+        undoChars = 0;
         current = baseline;
         fire();
     }
@@ -47,11 +51,24 @@ public class HistoryManager {
         return current;
     }
 
-    public boolean canUndo() { return !undoStack.isEmpty(); }
-    public boolean canRedo() { return !redoStack.isEmpty(); }
+    public boolean canUndo() {
+        return !undoStack.isEmpty();
+    }
 
-    private void pushUndo(String s) { undoStack.addFirst(s); undoChars += s.length(); }
-    private String popUndo() { String s = undoStack.removeFirst(); undoChars -= s.length(); return s; }
+    public boolean canRedo() {
+        return !redoStack.isEmpty();
+    }
+
+    private void pushUndo(String s) {
+        undoStack.addFirst(s);
+        undoChars += s.length();
+    }
+
+    private String popUndo() {
+        String s = undoStack.removeFirst();
+        undoChars -= s.length();
+        return s;
+    }
 
     private void trim() {
         while (undoStack.size() > MAX_STEPS
@@ -60,5 +77,7 @@ public class HistoryManager {
         }
     }
 
-    private void fire() { if (onChange != null) onChange.run(); }
+    private void fire() {
+        if (onChange != null) onChange.run();
+    }
 }

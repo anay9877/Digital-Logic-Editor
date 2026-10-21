@@ -21,6 +21,7 @@ public class EditorToolbar extends HBox {
     private Runnable onRedo;
     private Button undoButton;
     private Button redoButton;
+    private Runnable onSimulate;
 
     public EditorToolbar(Circuit circuit) {
         this.circuit = circuit;
@@ -62,7 +63,11 @@ public class EditorToolbar extends HBox {
                 if (t == ToolbarOptions.Redo) {
                     if (onRedo != null) onRedo.run();
                     return;
-}
+                }
+                if(t == ToolbarOptions.Simulate){
+                    if(onSimulate != null) onSimulate.run();
+                    return;
+                }
                 selectToolbarOption(t);
                 if (onUserSelect != null) {
                     onUserSelect.run();
@@ -88,8 +93,10 @@ public class EditorToolbar extends HBox {
     public void setOnDelete(Runnable action) {
         this.onDelete = action;
     }
-    //prajwal
 
+    public void setOnSimulate(Runnable action){
+        this.onSimulate = action;
+    }
 
     public void setOnUserSelect(Runnable r) {
         this.onUserSelect = r;

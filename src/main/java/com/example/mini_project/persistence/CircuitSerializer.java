@@ -14,18 +14,39 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+// Handles saving, loading, importing and exporting
 public class CircuitSerializer {
 
+    // Gson is a lib which is used to convert Java objects to JSON and vice versa
+    // GsonBuilder allows that configuration to happen
+    // CDATA_PATTERN is a regex to pattern finder, which finds the content enclosed in CDATA section in XML file
+    // Eg - <![CDATA[{"zoom": 1.0}]]> is converted to {"zoom": 1.0}
+    // Finds the content under metadata tag of an SVG (same as above but for SVG)
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Pattern CDATA_PATTERN = Pattern.compile("<!\\[CDATA\\[(.*?)\\]\\]>", Pattern.DOTALL);
     private static final Pattern METADATA_TAG_PATTERN = Pattern.compile("<metadata[^>]*>(.*?)</metadata>", Pattern.DOTALL);
 
-    // ── JSON Serialization ───────────────────────────────────────────────────
+    // JSON Serialization
 
+    // Convert a normal circuit to DTO
+    // Circuit
+    // ├── elements → CircuitElement objects
+    // │                ├── Ports
+    // │                ├── Internal properties
+    // │                └── Possibly JavaFX references
+    // ├── wireSegments → WireSegment objects
+    // └── pointNodes → PointNode objects
+    //
+    // CircuitDto
+    // ├── elements → ElementDto (id, type, x, y, props)
+    // ├── wires    → WireDto (id, endpoints)
+    // ├── nodes    → NodeDto (id, x, y)
+    // └── view      → ViewDto (zoom, panX, panY)
+    // (Taken by AI)
     public static CircuitDto toDto(Circuit circuit, ViewportManager viewport) {
         CircuitDto dto = new CircuitDto();
 
-        // 1. Elements (sorted by ID for deterministic output)
+        // Take the elements and then sort them by ID(using getId function)
         List<CircuitElement> sortedElements = new ArrayList<>(circuit.getElements().values());
         sortedElements.sort(Comparator.comparing(CircuitElement::getId));
         for (CircuitElement elem : sortedElements) {
@@ -42,7 +63,7 @@ public class CircuitSerializer {
             ));
         }
 
-        // 2. Nodes (sorted by ID)
+        // Sort the nodes and add it to sortedNodes
         List<PointNode> sortedNodes = new ArrayList<>(circuit.getPointNodes());
         sortedNodes.sort(Comparator.comparing(PointNode::getId));
         for (PointNode node : sortedNodes) {
@@ -53,7 +74,7 @@ public class CircuitSerializer {
             ));
         }
 
-        // 3. Wires (sorted by ID)
+        // Sort the wires and add it to sortedWires
         List<WireSegment> sortedWires = new ArrayList<>(circuit.getWireSegments());
         sortedWires.sort(Comparator.comparing(WireSegment::getId));
         for (WireSegment seg : sortedWires) {
@@ -156,8 +177,10 @@ public class CircuitSerializer {
                 double y2 = tp != null ? tp.getAbsY() : tn != null ? tn.getY() : 0;
 
                 WireSegment seg = new WireSegment(wd.id, x1, y1, x2, y2);
-                if (sp != null) seg.setStartPort(sp); else if (sn != null) seg.setStartNode(sn);
-                if (tp != null) seg.setEndPort(tp);   else if (tn != null) seg.setEndNode(tn);
+                if (sp != null) seg.setStartPort(sp);
+                else if (sn != null) seg.setStartNode(sn);
+                if (tp != null) seg.setEndPort(tp);
+                else if (tn != null) seg.setEndNode(tn);
                 circuit.addWireSegment(seg);
                 WireSegment.updateNextId(parseIdNumber(wd.id));
             }
@@ -177,6 +200,9 @@ public class CircuitSerializer {
 
     // ── SVG Export & Import ───────────────────────────────────────────────────
 
+    // We need to add JSON Script of circuit and individual wires, junction dotes and components
+    // The Json script is needed to reconstruct the circuit while the data of others are needed to
+    // show the actual data visually in svg file when opened!!
     public static String toSvg(Circuit circuit, ViewportManager viewport) {
         String json = toJson(circuit, viewport);
 
@@ -268,17 +294,17 @@ public class CircuitSerializer {
         }
 
         // Try extracting from <metadata>
-        Matcher metaMatcher = METADATA_TAG_PATTERN.matcher(svgContent);
-        if (metaMatcher.find()) {
-            String json = metaMatcher.group(1).trim();
-            fromJson(json, circuit, viewport, controller);
-            return;
-        }
+//        Matcher metaMatcher = METADATA_TAG_PATTERN.matcher(svgContent);
+//        if (metaMatcher.find()) {
+//            String json = metaMatcher.group(1).trim();
+//            fromJson(json, circuit, viewport, controller);
+//            return;
+//        }
 
         throw new IllegalArgumentException("No circuit metadata found in the SVG file.");
     }
 
-    // ── File Operations ───────────────────────────────────────────────────────
+    // File Operations
     // saveJson similar to importSVG
     // loadJson somewhat similar to exportSVG
 
@@ -302,8 +328,9 @@ public class CircuitSerializer {
         fromSvg(svg, circuit, viewport, controller);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // Helper functions
 
+    // AND-1-in0 -> in0
     private static String extractLocalPortId(String fullPortId) {
         int idx = fullPortId.lastIndexOf('-');
         return idx >= 0 ? fullPortId.substring(idx + 1) : fullPortId;
@@ -314,15 +341,6 @@ public class CircuitSerializer {
         Port p = elem.findPort(elem.getId() + "-" + localPortId);
         if (p != null) return p;
 
-        if (elem instanceof Gate gate) {
-            for (Port port : gate.getAllPorts()) {
-                if (port.getId().endsWith("-" + localPortId)) return port;
-            }
-        } else if (elem instanceof InputElement ie) {
-            if (ie.getOutputPort().getId().endsWith("-" + localPortId)) return ie.getOutputPort();
-        } else if (elem instanceof OutputElement oe) {
-            if (oe.getInputPort().getId().endsWith("-" + localPortId)) return oe.getInputPort();
-        }
         return null;
     }
 
@@ -339,7 +357,8 @@ public class CircuitSerializer {
         if (idx >= 0 && idx + 1 < id.length()) {
             try {
                 return Integer.parseInt(id.substring(idx + 1));
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
         }
         return 0;
     }
