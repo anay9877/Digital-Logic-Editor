@@ -95,9 +95,7 @@ public class Circuit {
         if (seg.getEndNode() != null) seg.getEndNode().removeSegment(seg);
     }
 
-    /**
-     * All wire segments reachable from 'start' through shared PointNodes (BFS).
-     */
+     // All wire segments reachable from 'start' through shared PointNodes (BFS).
     public Set<WireSegment> getConnectedWires(WireSegment start) {
         Set<WireSegment> found = new HashSet<>();
         Deque<WireSegment> queue = new ArrayDeque<>();
@@ -117,9 +115,7 @@ public class Circuit {
         return found;
     }
 
-    /**
-     * Removes segments by id. Unknown ids are skipped. Returns how many were removed.
-     */
+    // Removes segments by id. Unknown ids are skipped. Returns how many were removed.
     public int removeWireSegments(Set<String> ids) {
         if (ids.isEmpty()) return 0;
         List<WireSegment> removed = new ArrayList<>();
@@ -316,6 +312,4 @@ public class Circuit {
 
         return subCircuits;
     }
-
-
 }

@@ -368,7 +368,13 @@ public class SvgIconRegistry {
             </svg>
             """;
 
-    // ── Icon loading ──────────────────────────────────────────────────────────
+    // Creates an SVG icon for a component palette button.
+    public Node createPaletteIcon(ComponentType type, double size) {
+        String svg = getRawSvg(type, type == ComponentType.LED);
+        return load(svg, type.name(), size);
+    }
+
+    // Icon loading
 
     // Matches the opening <svg ...> tag, and the width="..." / height="..." attributes inside it.
     private static final Pattern SVG_TAG   = Pattern.compile("<svg\\b[^>]*>", Pattern.DOTALL);

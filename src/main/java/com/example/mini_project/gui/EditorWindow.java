@@ -123,7 +123,7 @@ public class EditorWindow extends Application {
         });
 
         // To Save a file
-        // You have never saved your file before then call savaAs
+        // You have never saved your file before then call saveAs
         // If you have saved the file before then overwrite in the same file
         MenuItem saveItem = new MenuItem("Save");
         saveItem.setAccelerator(new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN));

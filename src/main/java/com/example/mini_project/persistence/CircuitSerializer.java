@@ -198,7 +198,7 @@ public class CircuitSerializer {
         return findNode(c, ep.node);
     }
 
-    // ── SVG Export & Import ───────────────────────────────────────────────────
+    // SVG Export & Import
 
     // We need to add JSON Script of circuit and individual wires, junction dotes and components
     // The Json script is needed to reconstruct the circuit while the data of others are needed to
