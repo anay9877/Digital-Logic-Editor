@@ -211,61 +211,68 @@ public class EditorController {
     }
 
     // Wire drawing — called by CircuitCanvas mouse handlers
-    private static final double PORT_HIT_RADIUS = CircuitCanvas.GRID_SIZE * 1.5;  // 15px
-    private static final double NODE_HIT_RADIUS = CircuitCanvas.GRID_SIZE * 1.5;  // 15px
-    private static final double WIRE_HIT_THRESHOLD = CircuitCanvas.GRID_SIZE * 0.6;  // 6px
-    private static final double DIRECTION_LOCK_DIST = CircuitCanvas.GRID_SIZE;        // 10px
+    private static final double PORT_HIT_RADIUS = CircuitCanvas.GRID_SIZE * 1.5;
+    private static final double NODE_HIT_RADIUS = CircuitCanvas.GRID_SIZE * 1.5;
+    private static final double WIRE_HIT_THRESHOLD = CircuitCanvas.GRID_SIZE * 0.6;
+    private static final double DIRECTION_LOCK_DIST = CircuitCanvas.GRID_SIZE;
     private static final double WIRE_SELECT_THRESHOLD = 8.0;
 
-    public void onWireMousePressed(double x, double y) {
+    // Press on a port dot: the wire starts at that port
+    public void onWireStartFromPort(Port port) {
+        dragStartPort = port;
+        dragStartNode = null;
+        dragStartSegment = null;
+        // Snap so the wire start is on a grid dot (see the old comment: avoids spurious L-bends)
+        dragStartX = CircuitCanvas.snap(port.getAbsX());
+        dragStartY = CircuitCanvas.snap(port.getAbsY());
+        drawingWire = true;
+        bendDirectionLocked = false;
+    }
+
+    /**
+     * Press on empty canvas. Starts a wire from an existing PointNode, or from the BODY of an
+     * existing wire (this becomes a junction). Returns false if nothing is under the cursor.
+     * The wire is NOT split here: the split only happens in handleWireRelease, after the
+     * connection has passed validation, so a rejected drag never changes the circuit.
+     */
+    public boolean onWireStartFromCanvas(double x, double y) {
         x = CircuitCanvas.snap(x);
         y = CircuitCanvas.snap(y);
-        dragStartNode = null;
         dragStartPort = null;
+        dragStartNode = null;
         dragStartSegment = null;
-        // Try to hit a port first
-        Port hitPort = findPortAt(x, y);
-        if (hitPort != null) {
-            dragStartPort = hitPort;
-            dragStartNode = null;
-            // Snap so the wire start is always on a grid dot.
-            // Port.getAbsX() = element.getX() + relX. element.getX() is snapped but relX is a
-            // raw scaled value that may not be a multiple of GRID_SIZE. Snapping here ensures
-            // the start coordinate matches any snapped mouse position during drag, preventing
-            // spurious L-bends when the user drags perfectly vertical or horizontal.
-            dragStartX = CircuitCanvas.snap(hitPort.getAbsX());
-            dragStartY = CircuitCanvas.snap(hitPort.getAbsY());
-            drawingWire = true;
-            bendDirectionLocked = false;
-            return;
-        }
 
-        // Try to hit an existing PointNode (junction, corner, or free end)
         PointNode hitNode = findNodeAt(x, y);
         if (hitNode != null) {
-            dragStartPort = null;
             dragStartNode = hitNode;
             dragStartX = CircuitCanvas.snap(hitNode.getX());
             dragStartY = CircuitCanvas.snap(hitNode.getY());
             drawingWire = true;
             bendDirectionLocked = false;
-            return;
+            return true;
         }
 
-        // Try to hit the body of an existing WireSegment
         WireSegment hitSeg = findWireSegmentAt(x, y);
         if (hitSeg != null) {
-            PointNode junction = circuit.splitSegmentAtJunction(hitSeg, x, y);
-            dragStartPort = null;
-            dragStartNode = junction;
-            dragStartX = CircuitCanvas.snap(junction.getX());
-            dragStartY = CircuitCanvas.snap(junction.getY());
+            dragStartSegment = hitSeg;
+            // Project the press point onto the segment, then snap (same as splitSegmentAtJunction)
+            double sx = x, sy = y;
+            if (hitSeg.isHorizontal()) {
+                sy = hitSeg.getY1();
+                sx = Math.clamp(x, Math.min(hitSeg.getX1(), hitSeg.getX2()), Math.max(hitSeg.getX1(), hitSeg.getX2()));
+            } else {
+                sx = hitSeg.getX1();
+                sy = Math.clamp(y, Math.min(hitSeg.getY1(), hitSeg.getY2()), Math.max(hitSeg.getY1(), hitSeg.getY2()));
+            }
+            dragStartX = CircuitCanvas.snap(sx);
+            dragStartY = CircuitCanvas.snap(sy);
             drawingWire = true;
             bendDirectionLocked = false;
-            return;
+            return true;
         }
 
         drawingWire = false;
+        return false;
     }
 
     public double[] onWireMouseDragged(double mouseX, double mouseY) {
@@ -512,17 +519,6 @@ public class EditorController {
             circuit.removePointNode(currentNode);
             return;
         }
-
-        // Empty space: update node and segment coordinates
-        currentNode.setX(targetX);
-        currentNode.setY(targetY);
-        if (isStart) {
-            seg.setX1(targetX);
-            seg.setY1(targetY);
-        } else {
-            seg.setX2(targetX);
-            seg.setY2(targetY);
-        }
     }
 
     private void updateSegmentNode(WireSegment seg, PointNode currentNode, double nx, double ny) {
@@ -567,16 +563,9 @@ public class EditorController {
             circuit.addWireSegment(seg);
             return;
         }
-
-        PointNode freeEnd = new PointNode(targetX, targetY);
-        circuit.addPointNode(freeEnd);
-        WireSegment seg = (startPort != null)
-                ? WireSegment.portToNode(startPort, x1, y1, freeEnd)
-                : WireSegment.nodeToNode(startNode, freeEnd);
-        circuit.addWireSegment(seg);
     }
 
-    // ── Hit-testing ───────────────────────────────────────────────────────────
+    // Hit-testing
 
     public Port findPortAt(double x, double y) {
         for (CircuitElement elem : circuit.getElements().values()) {

@@ -122,23 +122,21 @@ public class CircuitCanvas extends Pane {
             }
             if (e.getButton() != MouseButton.PRIMARY) return;
 
-            if (isWireToolActive()) {                              // wire tool
+            // Wires and icons: icons are real nodes, wires are mouse-transparent, so a press that lands on the
+            // background may still be on top of a wire body or a PointNode.
+            boolean onBackground = e.getTarget() == this || e.getTarget() == contentGroup || e.getTarget() == gridCanvas;
+
+            // Drag from a wire body / node -> wire (junction). Port dots are handled in renderPorts().
+            if (onBackground) {
                 Point2D p = contentGroup.sceneToLocal(e.getSceneX(), e.getSceneY());
-                controller.onWireMousePressed(p.getX(), p.getY());
-                if (controller.isDrawingWire()) {
-                    previewLine = new Polyline();
-                    previewLine.setStroke(COLOR_PREVIEW);
-                    previewLine.setStrokeWidth(WIRE_WIDTH);
-                    previewLine.setFill(Color.TRANSPARENT);
-                    previewLine.getStrokeDashArray().addAll(6.0, 4.0);
-                    previewLine.setMouseTransparent(true);
-                    nodeLayer.getChildren().add(previewLine);
+                if (controller.onWireStartFromCanvas(p.getX(), p.getY())) {
+                    showWirePreview();
+                    return;                                        // not a rubber band
                 }
-                return;
             }
 
             // rubber band: Select tool + press on empty canvas
-            pressedOnEmpty = isSelectToolActive() && (e.getTarget() == this || e.getTarget() == contentGroup || e.getTarget() == gridCanvas);
+            pressedOnEmpty = isSelectToolActive() && onBackground;
             dragging = false;
             startX = e.getX();
             startY = e.getY();
@@ -183,7 +181,7 @@ public class CircuitCanvas extends Pane {
         });
 
         setOnMouseReleased(e -> {
-            if (e.getButton() == MouseButton.PRIMARY && isWireToolActive()) {   // finish wire
+            if (e.getButton() == MouseButton.PRIMARY && controller.isDrawingWire()) {   // finish wire
                 if (previewLine != null) {
                     nodeLayer.getChildren().remove(previewLine);
                     previewLine = null;
@@ -234,7 +232,7 @@ public class CircuitCanvas extends Pane {
                 Point2D p = contentGroup.sceneToLocal(e.getSceneX(), e.getSceneY());   // wires use world coordinates
                 boolean additive = e.isShiftDown() || e.isControlDown();
                 controller.onSelectPoint(p.getX(), p.getY(), additive, e.getClickCount() >= 2);
-            } else if (tool != null && tool != ToolbarOptions.Unknown && tool != ToolbarOptions.Wire) {
+            } else if (tool != null && tool != ToolbarOptions.Unknown) {
                 controller.optionSelected(tool);
             }
             render();
@@ -466,6 +464,11 @@ public class CircuitCanvas extends Pane {
                     dot.setFill(COLOR_PORT_IDLE);
                     dot.setRadius(PORT_RADIUS);
                 });
+                dot.setOnMousePressed(ev -> {
+                    if (ev.getButton() != MouseButton.PRIMARY) return;
+                    beginWireFrom(port);
+                    ev.consume();                 // keep the canvas handler (rubber band / wire-from-wire) out of it
+                });
 
                 nodeLayer.getChildren().add(dot);
             }
@@ -499,14 +502,27 @@ public class CircuitCanvas extends Pane {
         return ports;
     }
 
-    // ── Utility ───────────────────────────────────────────────────────────────
+    // Utility
 
     private boolean isSelectToolActive() {
         return toolbarRef != null && toolbarRef.getSelected() == ToolbarOptions.Select;
     }
 
-    private boolean isWireToolActive() {
-        return toolbarRef != null && toolbarRef.getSelected() == ToolbarOptions.Wire;
+    //Press on a port dot
+    private void beginWireFrom(Port port) {
+        controller.onWireStartFromPort(port);
+        showWirePreview();
+    }
+
+    // Creates the dashed live-preview line; it is updated on every mouse-drag event
+    private void showWirePreview() {
+        previewLine = new Polyline();
+        previewLine.setStroke(COLOR_PREVIEW);
+        previewLine.setStrokeWidth(WIRE_WIDTH);
+        previewLine.setFill(Color.TRANSPARENT);
+        previewLine.getStrokeDashArray().addAll(6.0, 4.0);
+        previewLine.setMouseTransparent(true);
+        nodeLayer.getChildren().add(previewLine);
     }
 
     public ViewportManager getViewportManager() {

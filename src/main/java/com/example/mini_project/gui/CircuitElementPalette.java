@@ -18,14 +18,12 @@ public class CircuitElementPalette extends VBox {
 
     private final SvgIconRegistry iconRegistry = new SvgIconRegistry();
     private final Map<ComponentType, Button> buttons = new EnumMap<>(ComponentType.class);
-    private final List<ComponentType> componentTypes = new ArrayList<>();
     private ComponentType selected;
     private Runnable onUserSelect;
 
     public CircuitElementPalette() {
         for (ComponentType t : ComponentType.values()) {
             if (t == ComponentType.UNKNOWN) continue;
-            componentTypes.add(t);
 
             Button b = new Button();
             b.setGraphic(iconRegistry.createPaletteIcon(t, ICON_SIZE));
