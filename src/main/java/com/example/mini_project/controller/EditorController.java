@@ -33,6 +33,9 @@ public class EditorController {
     private CircuitSimulator simulator;
     private boolean simulating = false;
     private boolean isValidated = false;
+    // Live move state
+    private boolean liveMoving = false;
+    private String moveBaseline;      // circuit snapshot taken when the drag starts
 
     private CircuitCanvas canvas;
 
@@ -190,24 +193,44 @@ public class EditorController {
         }
     }
 
-    public void moveElements(Collection<String> ids, double dx, double dy) {
-        boolean changed = false;
+    // Drag started: remember the pre-drag circuit
+    public void beginLiveMove() {
+        moveBaseline = CircuitSerializer.snapshot(circuit);
+        liveMoving = true;
+    }
+
+    /**
+     * Called on every grid step of a drag (dx, dy = total SNAPPED offset since the drag began).
+     * Rebuilds the circuit from the pre-drag snapshot, applies the offset, then re-routes the
+     * attached wires with onComponentMoved(). Starting from the snapshot every time means the
+     * routing never depends on the path the mouse took.
+     */
+    public void liveMove(Collection<String> ids, double dx, double dy) {
+        if (!liveMoving || moveBaseline == null) return;
+
+        CircuitSerializer.restore(moveBaseline, circuit);
+
+        List<CircuitElement> moved = new ArrayList<>();
         for (String id : ids) {
             CircuitElement e = circuit.getElement(id);
-            if (e != null) {
-                double newX = CircuitCanvas.snap(e.getX() + dx);
-                double newY = CircuitCanvas.snap(e.getY() + dy);
-                if (newX == e.getX() && newY == e.getY()) continue;
-                e.setPosition(newX, newY);
-                onComponentMoved(e);
-                changed = true;
-            }
+            if (e == null) continue;
+            e.setPosition(CircuitCanvas.snap(e.getX() + dx), CircuitCanvas.snap(e.getY() + dy));
+            moved.add(e);
         }
-        if (changed) {
-            stopSimulation();
-            notifyRender();
-            recordChange();
+        for (CircuitElement e : moved) {
+            onComponentMoved(e);          // stretches / bends the attached wires
         }
+        notifyRender();                   // liveMoving == true -> wires only
+    }
+
+    // Mouse released: final pose, one full redraw, one undo step
+    public void endLiveMove(Collection<String> ids, double dx, double dy) {
+        liveMove(ids, dx, dy);
+        liveMoving = false;
+        moveBaseline = null;
+        stopSimulation();
+        notifyRender();                   // full render now
+        recordChange();                   // no-op if the element ended where it started
     }
 
     // Wire drawing — called by CircuitCanvas mouse handlers
@@ -767,6 +790,8 @@ public class EditorController {
     }
 
     public void notifyRender() {
-        if (canvas != null) canvas.render();
+        if (canvas == null) return;
+        if (liveMoving) canvas.renderWiresOnly();   // mid-drag: keep the dragged icon alive
+        else canvas.render();
     }
 }

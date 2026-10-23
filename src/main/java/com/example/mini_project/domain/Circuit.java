@@ -115,7 +115,8 @@ public class Circuit {
         return found;
     }
 
-    // Removes segments by id. Unknown ids are skipped. Returns how many were removed.
+    // Removes segments by id. Unknown ids are skipped. Also removes any dangling stub the deletion leaves
+    // behind. Returns how many segments were removed in total.
     public int removeWireSegments(Set<String> ids) {
         if (ids.isEmpty()) return 0;
         List<WireSegment> removed = new ArrayList<>();
@@ -126,19 +127,100 @@ public class Circuit {
             }
             return false;
         });
+
+        List<PointNode> touched = new ArrayList<>();
         for (WireSegment seg : removed) {                   // keep each node's list + junction flag correct
             if (seg.getStartNode() != null) {
                 seg.getStartNode().removeSegment(seg);
+                touched.add(seg.getStartNode());
             }
             if (seg.getEndNode() != null) {
                 seg.getEndNode().removeSegment(seg);
+                touched.add(seg.getEndNode());
             }
         }
+
+        int stubs = pruneStubsFrom(new ArrayDeque<>(touched));
+
+        for (PointNode n : touched) {                       // tidy up pass-through nodes left behind
+            if (pointNodes.contains(n)) mergeStraightThrough(n);
+        }
+
         pointNodes.removeIf(n -> n.getConnectedSegments().isEmpty());   // prune orphan nodes
-        return removed.size();
+        return removed.size() + stubs;
     }
 
-    // ── Point Nodes ───────────────────────────────────────────────────────────
+    /**
+     * A node left with exactly ONE segment is a free end. Remove that segment, then check the node on its
+     * far side, and keep going until the chain reaches a node that still has 2+ segments or a port.
+     * Only chains next to the deleted segments are touched.
+     */
+    private int pruneStubsFrom(Deque<PointNode> pending) {
+        int count = 0;
+        while (!pending.isEmpty()) {
+            PointNode n = pending.poll();
+            if (n.getConnectedSegments().size() != 1) continue;   // 0 = orphan (cleaned by caller), 2+ = still a corner/junction
+
+            WireSegment stub = n.getConnectedSegments().get(0);
+            removeWireSegment(stub);                              // detaches from both end nodes
+            count++;
+
+            PointNode far = (stub.getStartNode() == n) ? stub.getEndNode() : stub.getStartNode();
+            if (far != null) pending.add(far);                    // may have become a free end too
+        }
+        return count;
+    }
+
+    /**
+     * If 'n' has exactly two segments that lie on the same straight line and leave n in OPPOSITE
+     * directions, merge them into one segment and drop the node. Connectivity is unchanged.
+     * Corners (perpendicular segments) are left alone.
+     */
+    private void mergeStraightThrough(PointNode n) {
+        if (n.getConnectedSegments().size() != 2) return;
+        WireSegment a = n.getConnectedSegments().get(0);
+        WireSegment b = n.getConnectedSegments().get(1);
+
+        boolean sameLine = (a.isHorizontal() && b.isHorizontal() && Math.abs(a.getY1() - b.getY1()) < 0.001)
+                || (a.isVertical() && b.isVertical() && Math.abs(a.getX1() - b.getX1()) < 0.001);
+        if (!sameLine) return;
+
+        boolean aEndsAtN = (a.getEndNode() == n);
+        boolean bEndsAtN = (b.getEndNode() == n);
+
+        // far end of each segment (the end that is NOT n)
+        double aFx = aEndsAtN ? a.getX1() : a.getX2();
+        double aFy = aEndsAtN ? a.getY1() : a.getY2();
+        double bFx = bEndsAtN ? b.getX1() : b.getX2();
+        double bFy = bEndsAtN ? b.getY1() : b.getY2();
+
+        // must leave n in opposite directions, otherwise the two wires overlap
+        double dot = (aFx - n.getX()) * (bFx - n.getX()) + (aFy - n.getY()) * (bFy - n.getY());
+        if (dot >= 0) return;
+
+        Port farPort = bEndsAtN ? b.getStartPort() : b.getEndPort();
+        PointNode farNode = bEndsAtN ? b.getStartNode() : b.getEndNode();
+
+        removeWireSegment(b);                           // detaches b from n and from its far node
+
+        // stretch 'a' so its n-end now ends where b's far end was
+        if (aEndsAtN) {
+            a.setEndNode(farNode);
+            a.setEndPort(farPort);
+            a.setX2(bFx);
+            a.setY2(bFy);
+        } else {
+            a.setStartNode(farNode);
+            a.setStartPort(farPort);
+            a.setX1(bFx);
+            a.setY1(bFy);
+        }
+        n.removeSegment(a);
+        if (farNode != null) farNode.addSegment(a);
+        pointNodes.remove(n);
+    }
+
+    // Point Nodes
 
     public List<PointNode> getPointNodes() {
         return pointNodes;

@@ -78,6 +78,11 @@ public class CircuitCanvas extends Pane {
     private Set<String> dragIds = Set.of();
     private double dragStartX, dragStartY;
     private boolean moving = false;
+    private double dragOriginX, dragOriginY;   // grabbed element's position when the drag began
+    private double lastSdx, lastSdy;           // last snapped offset that was applied
+
+    private List<Node> wireNodes = new ArrayList<>();
+    private List<Node> junctionNodes = new ArrayList<>();
 
     public CircuitCanvas(EditorController controller) {
         this.controller = controller;
@@ -316,17 +321,19 @@ public class CircuitCanvas extends Pane {
     public void render() {
         nodeLayer.getChildren().clear();
 
-        // 1. Wire segments (straight orthogonal lines)
-        renderWireSegments();
+        // 1. Wire segments
+        wireNodes = buildWireNodes();
+        nodeLayer.getChildren().addAll(wireNodes);
 
-        // 2. Component icons (selection glow + drag handlers)
+        // 2. Component icons
         renderComponents();
 
         // 3. Port dots (on top of icons)
         renderPorts();
 
         // 4. Junction dots
-        renderJunctions();
+        junctionNodes = buildJunctionNodes();
+        nodeLayer.getChildren().addAll(junctionNodes);
 
         // 5. Re-add preview line if active
         if (previewLine != null) {
@@ -334,8 +341,21 @@ public class CircuitCanvas extends Pane {
         }
     }
 
+    // Redraws ONLY wires and junction dots. Icons and port dots (and the drag in progress) are untouched.
+    public void renderWiresOnly() {
+        nodeLayer.getChildren().removeAll(wireNodes);
+        nodeLayer.getChildren().removeAll(junctionNodes);
+
+        wireNodes = buildWireNodes();
+        junctionNodes = buildJunctionNodes();
+
+        nodeLayer.getChildren().addAll(0, wireNodes);       // wires stay underneath the icons
+        nodeLayer.getChildren().addAll(junctionNodes);      // junction dots stay on top
+    }
+
     // Layer 1: Wire segments
-    private void renderWireSegments() {
+    private List<Node> buildWireNodes() {
+        List<Node> out = new ArrayList<>();
         for (WireSegment seg : controller.getCircuit().getWireSegments()) {
             Polyline wire = new Polyline(
                     seg.getX1(), seg.getY1(),
@@ -347,16 +367,31 @@ public class CircuitCanvas extends Pane {
             }
 
             Color wireColor = switch (seg.getState()) {
-                case ON -> Color.web("#00c800");   // bright green — active
-                case OFF -> Color.web("#404040");   // dark gray    — inactive
-                case UNKNOWN -> Color.web("#000000");   // black        — unknown / undriven
+                case ON -> Color.web("#00c800");   // bright green: active
+                case OFF -> Color.web("#404040");   // dark gray: inactive
+                case UNKNOWN -> Color.web("#000000");   // black: unknown / undriven
             };
             wire.setStroke(wireColor);
             wire.setStrokeWidth(WIRE_WIDTH);
             wire.setFill(Color.TRANSPARENT);
             wire.setMouseTransparent(true);
-            nodeLayer.getChildren().add(wire);
+            out.add(wire);
         }
+        return out;
+    }
+
+    // Layer 4: Junction dots
+    private List<Node> buildJunctionNodes() {
+        List<Node> out = new ArrayList<>();
+        for (PointNode node : controller.getCircuit().getPointNodes()) {
+            if (node.isJunction()) {
+                Circle jDot = new Circle(node.getX(), node.getY(), JUNCTION_RADIUS);
+                jDot.setFill(COLOR_JUNCTION);
+                jDot.setMouseTransparent(true);
+                out.add(jDot);
+            }
+        }
+        return out;
     }
 
     // ── Layer 2: Component icons ───────────────────────────────────────────────
@@ -380,6 +415,10 @@ public class CircuitCanvas extends Pane {
                 Point2D p = contentGroup.sceneToLocal(ev.getSceneX(), ev.getSceneY());
                 dragStartX = p.getX();
                 dragStartY = p.getY();
+                dragOriginX = elem.getX();
+                dragOriginY = elem.getY();
+                lastSdx = 0;
+                lastSdy = 0;
                 moving = false;
             });
 
@@ -389,22 +428,33 @@ public class CircuitCanvas extends Pane {
                 double dx = p.getX() - dragStartX;
                 double dy = p.getY() - dragStartY;
                 if (!moving && Math.hypot(dx, dy) < 3) return;
-                moving = true;
-                for (Node n : nodeLayer.getChildren()) {
-                    if (n.getUserData() instanceof String id && dragIds.contains(id)) {
-                        n.setTranslateX(dx);
-                        n.setTranslateY(dy);
-                    }
+                if (!moving) {
+                    moving = true;
+                    controller.beginLiveMove();                       // snapshot once
                 }
                 ev.consume();
+
+                // Snap to the grid so the icons and the re-routed wires always agree
+                double sdx = snap(dragOriginX + dx) - dragOriginX;
+                double sdy = snap(dragOriginY + dy) - dragOriginY;
+                if (sdx == lastSdx && sdy == lastSdy) return;         // same grid cell: nothing to redo
+                lastSdx = sdx;
+                lastSdy = sdy;
+
+                // 1. icons + port dots of the dragged elements
+                for (Node n : nodeLayer.getChildren()) {
+                    if (n.getUserData() instanceof String id && dragIds.contains(id)) {
+                        n.setTranslateX(sdx);
+                        n.setTranslateY(sdy);
+                    }
+                }
+                // 2. wires: the controller re-routes the model, then calls renderWiresOnly()
+                controller.liveMove(dragIds, sdx, sdy);
             });
 
             icon.setOnMouseReleased(ev -> {
                 if (!moving) return;
-                Point2D p = contentGroup.sceneToLocal(ev.getSceneX(), ev.getSceneY());
-                double dx = p.getX() - dragStartX;
-                double dy = p.getY() - dragStartY;
-                controller.moveElements(dragIds, dx, dy);
+                controller.endLiveMove(dragIds, lastSdx, lastSdy);
                 if (!controller.getSelection().isElementSelected(elem.getId())) {
                     controller.getSelection().selectElement(elem.getId(), false);
                 }
@@ -471,19 +521,6 @@ public class CircuitCanvas extends Pane {
                 });
 
                 nodeLayer.getChildren().add(dot);
-            }
-        }
-    }
-
-    // ── Layer 4: Junction dots ─────────────────────────────────────────────────
-
-    private void renderJunctions() {
-        for (PointNode node : controller.getCircuit().getPointNodes()) {
-            if (node.isJunction()) {
-                Circle jDot = new Circle(node.getX(), node.getY(), JUNCTION_RADIUS);
-                jDot.setFill(COLOR_JUNCTION);
-                jDot.setMouseTransparent(true);
-                nodeLayer.getChildren().add(jDot);
             }
         }
     }
