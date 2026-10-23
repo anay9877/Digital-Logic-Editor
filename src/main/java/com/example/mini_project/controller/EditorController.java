@@ -58,6 +58,27 @@ public class EditorController {
         return canvas;
     }
 
+    private double getElementSize(CircuitElement element) {
+        if (element instanceof Gate) return 128;
+        return 64;
+    }
+
+    private boolean isOverlapping(CircuitElement element1, double x1, double y1, 
+                                CircuitElement element2, double x2, double y2) {
+        double element1Size = getElementSize(element1);
+        double element2Size = getElementSize(element2);
+        return (x1 < x2 + element2Size) && (x1 + element1Size > x2) &&
+                (y1 < y2 + element2Size) && (y1 + element1Size > y2);
+    }
+
+    private boolean isOverlappingExistingElement(CircuitElement newElement) {
+        for (CircuitElement element: circuit.getElements().values()) {
+            if (isOverlapping(element, element.getX(), element.getY(), newElement, newElement.getX(), newElement.getY())) {
+                return true;
+            }
+        }
+        return false;
+    }
     // Used for deletion of entire circuit
     public void newCircuit() {
         circuit.clear();
@@ -81,10 +102,19 @@ public class EditorController {
     }
 
     public void onElementPlaced(ComponentType type, double x, double y) {
+        double newX = CircuitCanvas.snap(x);
+        double newY = CircuitCanvas.snap(y);
+
         int n = counters.getOrDefault(type, 0) + 1;
-        counters.put(type, n);
         String id = type.name() + "-" + n;
-        circuit.addElement(type.create(id, CircuitCanvas.snap(x), CircuitCanvas.snap(y)));
+        CircuitElement newElement = type.create(id, newX, newY);
+        if (isOverlappingExistingElement(newElement)) {
+            LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+            System.err.println(time + " - Component overlapping, cannot place it there.");
+            return;
+        }
+        counters.put(type, n);
+        circuit.addElement(newElement);
         stopSimulation();
 //        notifyRender();
         recordChange();
@@ -192,6 +222,37 @@ public class EditorController {
     }
 
     public void moveElements(Collection<String> ids, double dx, double dy) {
+        Map<String, double[]> newPositions = new HashMap<>();
+        // Calculate all proposed positions first.
+        for (String id : ids) {
+            CircuitElement element = circuit.getElement(id);
+            if (element == null) continue;
+            double newX = CircuitCanvas.snap(element.getX() + dx);
+            double newY = CircuitCanvas.snap(element.getY() + dy);
+            newPositions.put(id, new double[]{newX, newY});
+        }
+        for (String id : ids) {
+            CircuitElement moving = circuit.getElement(id);
+            double[] position = newPositions.get(id);
+            if (moving == null || position == null) continue;
+            for (CircuitElement other : circuit.getElements().values()) {
+                if (moving == other) {
+                    continue;
+                }
+                double otherX = other.getX();
+                double otherY = other.getY();
+                if (newPositions.containsKey(other.getId())) {
+                    double[] otherPosition = newPositions.get(other.getId());
+                    otherX = otherPosition[0];
+                    otherY = otherPosition[1];
+                }
+                if (isOverlapping(moving, position[0], position[1], other, otherX, otherY)) {
+                    LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                    System.err.println(time + " - Movement failed: Components cannot overlap.");
+                    return;
+                }
+            }
+        }
         boolean changed = false;
         for (String id : ids) {
             CircuitElement e = circuit.getElement(id);
