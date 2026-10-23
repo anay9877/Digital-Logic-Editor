@@ -302,6 +302,7 @@ public class CircuitCanvas extends Pane {
         toolbar.setOnZoomOut(() -> viewportManager.zoomOut());
         toolbar.setOnDelete(controller::deleteSelected); //deletion
         toolbar.setOnSimulate(controller::runSimulation);
+        toolbar.setOnValidate(controller::validateCircuit);
         toolbar.setOnUndo(controller::undo); //prajwal undo redo
         toolbar.setOnRedo(controller::redo);
         controller.getHistory().setOnChange(() -> toolbar.setHistoryState(

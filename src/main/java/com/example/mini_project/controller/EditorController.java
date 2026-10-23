@@ -208,6 +208,10 @@ public class EditorController {
         }
     }
 
+    public void validateCircuit() {
+        handleValidate();
+    }
+
     public void moveElements(Collection<String> ids, double dx, double dy) {
         WireChangeCommand.Image wiresBefore = WireChangeCommand.capture(circuit);
         List<MoveElementsCommand.Move> moves = new ArrayList<>();

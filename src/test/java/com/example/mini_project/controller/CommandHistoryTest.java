@@ -36,6 +36,21 @@ class CommandHistoryTest {
     }
 
     @Test
+    void placingAnElementClearsThePreviousSelection() {
+        Circuit circuit = new Circuit();
+        EditorController controller = new EditorController(circuit);
+
+        controller.onElementPlaced(ComponentType.AND, 0, 0);
+        controller.getSelection().selectElement("AND-1", false);
+        assertTrue(controller.getSelection().isElementSelected("AND-1"));
+
+        controller.onElementPlaced(ComponentType.OR, 160, 0);
+
+        assertFalse(controller.getSelection().isElementSelected("AND-1"));
+        assertFalse(controller.getSelection().isElementSelected("OR-1"));
+    }
+
+    @Test
     void undoAndRedoInputTogglePreservesTheInputValue() {
         Circuit circuit = new Circuit();
         InputElement input = (InputElement) ComponentType.SWITCH.create("SWITCH-1", 0, 0);

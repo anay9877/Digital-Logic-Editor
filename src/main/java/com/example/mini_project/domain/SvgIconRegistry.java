@@ -28,9 +28,9 @@ public class SvgIconRegistry {
     private static final double GATE_SHIFT_X = -16;
     private static final double GATE_SHIFT_Y = -16;
 
-    // Switch + LED render in a 64 px box over a 512-unit viewBox = exactly 0.125 px per unit,
-    // so whole-unit shifts below map to whole-pixel (and grid-multiple) port offsets.
-    private static final double SWITCH_WIDTH = 64;
+    // The switch uses an 80 px box so its body-edge port maps to the 20 px canvas grid.
+    // The LED remains 64 px.
+    private static final double SWITCH_WIDTH = 80;
     private static final double LED_WIDTH    = 64;
 
     // ── viewBox sizes of the source artwork (all square) ──────────────────────
@@ -40,7 +40,7 @@ public class SvgIconRegistry {
 
     // pixels per viewBox unit
     private static final double GATE_SCALE   = GATE_WIDTH   / GATE_VIEWBOX;    // 128 / 512 = 0.25
-    private static final double SWITCH_SCALE = SWITCH_WIDTH / SWITCH_VIEWBOX;  // 64 / 512 = 0.125
+    private static final double SWITCH_SCALE = SWITCH_WIDTH / SWITCH_VIEWBOX;  // 80 / 512 = 0.15625
     private static final double LED_SCALE    = LED_WIDTH    / LED_VIEWBOX;     // 64 / 512 = 0.125
 
     // ── Gate port positions, in viewBox units ─────────────────────────────────
@@ -62,18 +62,16 @@ public class SvgIconRegistry {
     private static final double GATE_MID_Y  = 256;
 
     // ── Switch / LED connection points, in viewBox units ──────────────────────
-    // The canvas puts the icon origin on a 10 px grid dot and a port's position is
-    // origin + offset, so a port only sits on a grid dot if its pixel offset is a multiple
-    // of GRID (10). The artwork is therefore shifted (whole viewBox units) so that its
-    // connection point lands exactly on such an offset.
+    // The canvas puts component origins on the 20 px grid and snaps wire starts to it.
+    // Shift the switch artwork so its body-edge connection point lands on that same grid.
     //
-    //   SWITCH output : right outer edge of the body (rect x 110 + w 292 + half stroke 6 = 408),
-    //                   on the centre line y = 256.
+    //   SWITCH output : right outer edge of the body (x = 408), on the centre line y = 256.
     //   LED input     : bottom end of the long (anode) lead, path end (210, 491).
     //
-    //   shifted units * 0.125 px  ->  switch out = (50, 30) px,  LED in = (30, 60) px
+    //   shifted units * 0.15625 px -> switch out = (60, 40) px
+    //   LED remains 64 px -> input = (30, 60) px
     private static final double SWITCH_OUT_X = 408, SWITCH_OUT_Y = 256;
-    private static final double SWITCH_SHIFT_X = -8,  SWITCH_SHIFT_Y = -16;
+    private static final double SWITCH_SHIFT_X = -24, SWITCH_SHIFT_Y = 0;
 
     private static final double LED_IN_X = 210, LED_IN_Y = 491;
     private static final double LED_SHIFT_X = 30,  LED_SHIFT_Y = -11;
@@ -484,9 +482,11 @@ public class SvgIconRegistry {
                     new PortSpec("in0", PortType.INPUT,    0.0, 60.0),
                     new PortSpec("out", PortType.OUTPUT, 120.0, 60.0)
             );
-            // SWITCH: output on the right edge of the body, on the centre line -> (50, 30) px
+            // SWITCH: output on the right edge of the body, aligned to the 20 px wire grid.
             case SWITCH -> List.of(
-                    new PortSpec("out", PortType.OUTPUT, 50.0, 30.0)
+                    new PortSpec("out", PortType.OUTPUT,
+                            (SWITCH_OUT_X + SWITCH_SHIFT_X) * SWITCH_SCALE,
+                            (SWITCH_OUT_Y + SWITCH_SHIFT_Y) * SWITCH_SCALE)
             );
             // LED: input on the tip of the long (anode) lead -> (30, 60) px
             case LED -> List.of(
