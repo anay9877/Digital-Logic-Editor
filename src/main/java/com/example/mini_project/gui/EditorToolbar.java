@@ -10,7 +10,7 @@ import java.util.List;
 public class EditorToolbar extends HBox {
     private final Circuit circuit;
     private final List<ToolbarOptions> toolbarOptions = new ArrayList<>();
-    private ToolbarOptions selected;
+    private ToolbarOptions selected = ToolbarOptions.Select;
     private Runnable onUserSelect;
     private Runnable onZoomIn;
     private Runnable onZoomOut;
@@ -26,7 +26,6 @@ public class EditorToolbar extends HBox {
     public EditorToolbar(Circuit circuit) {
         this.circuit = circuit;
 
-        // this.selected = ToolbarOptions.Select;
         setSpacing(8);
         setStyle("-fx-padding: 10; -fx-background-color: #dddddd;");
 

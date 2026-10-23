@@ -2,6 +2,7 @@ package com.example.mini_project.gui;
 
 public enum ToolbarOptions {
     Select,
+    Hand,
     Delete,
     Wire,
     Undo,

@@ -4,6 +4,7 @@ import com.example.mini_project.controller.EditorController;
 import com.example.mini_project.domain.*;
 import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
+import javafx.scene.Cursor;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.canvas.Canvas;
@@ -21,7 +22,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Mouse's left button  --> select / rubber band / drag elements / draw wires
+ * Mouse's left button  --> select / rubber band / drag elements / draw wires / pan with Hand
  * Mouse's right button --> pan the view
  * <p>
  * The main drawing surface for the circuit editor.
@@ -78,6 +79,7 @@ public class CircuitCanvas extends Pane {
     private Set<String> dragIds = Set.of();
     private double dragStartX, dragStartY;
     private boolean moving = false;
+    private boolean handPanning = false;
 
     public CircuitCanvas(EditorController controller) {
         this.controller = controller;
@@ -122,6 +124,15 @@ public class CircuitCanvas extends Pane {
             }
             if (e.getButton() != MouseButton.PRIMARY) return;
 
+            if (isHandToolActive()) {
+                handPanning = true;
+                lastMousePosition_X = e.getX();
+                lastMousePosition_Y = e.getY();
+                setCursor(Cursor.CLOSED_HAND);
+                e.consume();
+                return;
+            }
+
             if (isWireToolActive()) {                              // wire tool
                 Point2D p = contentGroup.sceneToLocal(e.getSceneX(), e.getSceneY());
                 controller.onWireMousePressed(p.getX(), p.getY());
@@ -152,6 +163,16 @@ public class CircuitCanvas extends Pane {
             e.consume();
         });
         setOnMouseDragged(e -> {
+            if (handPanning && e.isPrimaryButtonDown()) {
+                double dx = e.getX() - lastMousePosition_X;
+                double dy = e.getY() - lastMousePosition_Y;
+                viewportManager.translate(dx, dy);
+                lastMousePosition_X = e.getX();
+                lastMousePosition_Y = e.getY();
+                e.consume();
+                return;
+            }
+
             if (e.isSecondaryButtonDown()) {                       // pan
                 double dx = e.getX() - lastMousePosition_X;
                 double dy = e.getY() - lastMousePosition_Y;
@@ -183,6 +204,13 @@ public class CircuitCanvas extends Pane {
         });
 
         setOnMouseReleased(e -> {
+            if (e.getButton() == MouseButton.PRIMARY && handPanning) {
+                handPanning = false;
+                updateCursor();
+                e.consume();
+                return;
+            }
+
             if (e.getButton() == MouseButton.PRIMARY && isWireToolActive()) {   // finish wire
                 if (previewLine != null) {
                     nodeLayer.getChildren().remove(previewLine);
@@ -190,6 +218,7 @@ public class CircuitCanvas extends Pane {
                 }
                 Point2D p = contentGroup.sceneToLocal(e.getSceneX(), e.getSceneY());
                 controller.onWireMouseReleased(p.getX(), p.getY());
+                returnToPointerMode();
                 return;
             }
 
@@ -230,11 +259,13 @@ public class CircuitCanvas extends Pane {
             if (comp != null && comp != ComponentType.UNKNOWN) {
                 Point2D p = contentGroup.sceneToLocal(e.getSceneX(), e.getSceneY());
                 controller.onElementPlaced(comp, p.getX(), p.getY());
-            } else if (tool == ToolbarOptions.Select) {
+                returnToPointerMode();
+            } else if (isSelectToolActive()) {
                 Point2D p = contentGroup.sceneToLocal(e.getSceneX(), e.getSceneY());   // wires use world coordinates
                 boolean additive = e.isShiftDown() || e.isControlDown();
                 controller.onSelectPoint(p.getX(), p.getY(), additive, e.getClickCount() >= 2);
-            } else if (tool != null && tool != ToolbarOptions.Unknown && tool != ToolbarOptions.Wire) {
+            } else if (tool != null && tool != ToolbarOptions.Unknown
+                    && tool != ToolbarOptions.Wire && tool != ToolbarOptions.Hand) {
                 controller.optionSelected(tool);
             }
             render();
@@ -250,6 +281,7 @@ public class CircuitCanvas extends Pane {
         palette.setOnUserSelect(() -> {
             if (toolbarRef != null)
                 toolbarRef.selectToolbarOption(ToolbarOptions.Unknown);
+            updateCursor();
         });
     }
 
@@ -259,7 +291,9 @@ public class CircuitCanvas extends Pane {
             if (paletteRef != null) {
                 paletteRef.selectComponentType(ComponentType.UNKNOWN);
             }
+            updateCursor();
         });
+        updateCursor();
 
         toolbar.setOnZoomIn(() -> viewportManager.zoomIn());
         toolbar.setOnZoomOut(() -> viewportManager.zoomOut());
@@ -419,21 +453,15 @@ public class CircuitCanvas extends Pane {
             icon.setOnMouseClicked(ev -> {
                 if (ev.getButton() != MouseButton.PRIMARY) return;
                 if (!ev.isStillSincePress()) return;
-                if (elem instanceof InputElement input) {
+                if (elem instanceof InputElement input && isSelectToolActive()) {
                     controller.toggleInput(input);
                     ev.consume();
-                    if (isSelectToolActive()) {
-                        boolean additive =
-                                ev.isShiftDown() || ev.isControlDown();
-                        controller.getSelection()
-                                .selectElement(elem.getId(), additive);
-                    } else {
-                        render();
-                    }
+                    boolean additive = ev.isShiftDown() || ev.isControlDown();
+                    controller.getSelection().selectElement(elem.getId(), additive);
                     return;
                 }
-                // Normal component selection
                 if (!isSelectToolActive()) return;
+                // Normal component selection
                 ev.consume();
                 boolean additive = ev.isShiftDown() || ev.isControlDown();
                 controller.getSelection().selectElement(elem.getId(), additive);
@@ -502,11 +530,33 @@ public class CircuitCanvas extends Pane {
     // ── Utility ───────────────────────────────────────────────────────────────
 
     private boolean isSelectToolActive() {
-        return toolbarRef != null && toolbarRef.getSelected() == ToolbarOptions.Select;
+        return toolbarRef != null
+                && (toolbarRef.getSelected() == ToolbarOptions.Select
+                || toolbarRef.getSelected() == ToolbarOptions.Unknown)
+                && (paletteRef == null || paletteRef.getSelected() == null
+                || paletteRef.getSelected() == ComponentType.UNKNOWN);
+    }
+
+    private boolean isHandToolActive() {
+        return toolbarRef != null && toolbarRef.getSelected() == ToolbarOptions.Hand;
     }
 
     private boolean isWireToolActive() {
         return toolbarRef != null && toolbarRef.getSelected() == ToolbarOptions.Wire;
+    }
+
+    private void updateCursor() {
+        setCursor(isHandToolActive() ? Cursor.OPEN_HAND : Cursor.DEFAULT);
+    }
+
+    private void returnToPointerMode() {
+        if (paletteRef != null) {
+            paletteRef.selectComponentType(ComponentType.UNKNOWN);
+        }
+        if (toolbarRef != null) {
+            toolbarRef.selectToolbarOption(ToolbarOptions.Select);
+        }
+        updateCursor();
     }
 
     public ViewportManager getViewportManager() {

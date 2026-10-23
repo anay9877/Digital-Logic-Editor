@@ -103,7 +103,7 @@ public class EditorController {
     // Tells which option is selected from toolbar(implemented just for select and delete)
     public void optionSelected(ToolbarOptions option) {
         switch (option) {
-            case Select -> selection.clear();
+            case Select, Hand -> selection.clear();
             case Delete -> handleDelete();
             case Validate -> handleValidate();
             case Simulate -> runSimulation();
