@@ -143,7 +143,7 @@ public class CircuitCanvas extends Pane {
             boolean onBackground = e.getTarget() == this || e.getTarget() == contentGroup || e.getTarget() == gridCanvas;
 
             // Drag from a wire body / node -> wire (junction). Port dots are handled in renderPorts().
-            if (onBackground) {
+            if (isSelectToolActive() && onBackground) {
                 Point2D p = contentGroup.sceneToLocal(e.getSceneX(), e.getSceneY());
                 if (controller.onWireStartFromCanvas(p.getX(), p.getY())) {
                     showWirePreview();
@@ -268,7 +268,7 @@ public class CircuitCanvas extends Pane {
                 boolean additive = e.isShiftDown() || e.isControlDown();
                 controller.onSelectPoint(p.getX(), p.getY(), additive, e.getClickCount() >= 2);
             } else if (tool != null && tool != ToolbarOptions.Unknown
-                    && tool != ToolbarOptions.Wire && tool != ToolbarOptions.Hand) {
+                    && tool != ToolbarOptions.Select && tool != ToolbarOptions.Hand) {
                 controller.optionSelected(tool);
             }
             render();
@@ -464,7 +464,7 @@ public class CircuitCanvas extends Pane {
                 if (!moving && Math.hypot(dx, dy) < 3) return;
                 if (!moving) {
                     moving = true;
-                    controller.beginLiveMove();                       // snapshot once
+                    controller.beginLiveMove();
                 }
                 ev.consume();
 
@@ -543,10 +543,11 @@ public class CircuitCanvas extends Pane {
                     dot.setRadius(PORT_RADIUS);
                 });
                 dot.setOnMousePressed(ev -> {
-                    if (ev.getButton() != MouseButton.PRIMARY) return;
+                    if (ev.getButton() != MouseButton.PRIMARY || !isSelectToolActive()) return;
                     beginWireFrom(port);
                     ev.consume();                 // keep the canvas handler (rubber band / wire-from-wire) out of it
                 });
+                dot.setOnMouseClicked(ev -> ev.consume());
 
                 nodeLayer.getChildren().add(dot);
             }

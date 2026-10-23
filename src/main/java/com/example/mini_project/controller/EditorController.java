@@ -32,11 +32,16 @@ public class EditorController {
     private boolean horizontalFirst = true;
     private boolean bendDirectionLocked = false;
     private WireChangeCommand.Image wireGestureBefore;
+    private WireChangeCommand.Image liveMoveWiresBefore;
+    private final Map<String, MoveOrigin> liveMoveOrigins = new HashMap<>();
+    private boolean liveMoving;
     private CircuitSimulator simulator;
     private boolean simulating = false;
     private boolean isValidated = false;
 
     private CircuitCanvas canvas;
+
+    private record MoveOrigin(CircuitElement element, double x, double y) {}
 
     public EditorController(Circuit circuit) {
         this.circuit = circuit;
@@ -205,6 +210,7 @@ public class EditorController {
     public void moveElements(Collection<String> ids, double dx, double dy) {
         WireChangeCommand.Image wiresBefore = WireChangeCommand.capture(circuit);
         List<MoveElementsCommand.Move> moves = new ArrayList<>();
+        List<CircuitElement> movedElements = new ArrayList<>();
         for (String id : ids) {
             CircuitElement e = circuit.getElement(id);
             if (e != null) {
@@ -214,15 +220,71 @@ public class EditorController {
                 double newY = CircuitCanvas.snap(e.getY() + dy);
                 if (newX == e.getX() && newY == e.getY()) continue;
                 e.setPosition(newX, newY);
-                onComponentMoved(e);
+                movedElements.add(e);
                 moves.add(new MoveElementsCommand.Move(e, oldX, oldY, newX, newY));
             }
         }
         if (!moves.isEmpty()) {
+            for (CircuitElement element : movedElements) rerouteElementWires(element);
             stopSimulation();
             notifyRender();
             recordWithWires("Move elements", wiresBefore, new MoveElementsCommand(moves));
         }
+    }
+
+    public void beginLiveMove() {
+        liveMoveOrigins.clear();
+        for (CircuitElement element : circuit.getElements().values()) {
+            liveMoveOrigins.put(element.getId(),
+                    new MoveOrigin(element, element.getX(), element.getY()));
+        }
+        liveMoveWiresBefore = WireChangeCommand.capture(circuit);
+        liveMoving = true;
+        stopSimulation();
+    }
+
+    public void liveMove(Collection<String> ids, double dx, double dy) {
+        if (!liveMoving || liveMoveWiresBefore == null) return;
+
+        WireChangeCommand currentChanges =
+                WireChangeCommand.diff(circuit, liveMoveWiresBefore, WireChangeCommand.capture(circuit));
+        if (currentChanges != null) currentChanges.undo();
+
+        List<CircuitElement> moved = new ArrayList<>();
+        for (String id : ids) {
+            MoveOrigin origin = liveMoveOrigins.get(id);
+            if (origin == null) continue;
+            CircuitElement element = origin.element();
+            element.setPosition(CircuitCanvas.snap(origin.x() + dx), CircuitCanvas.snap(origin.y() + dy));
+            moved.add(element);
+        }
+        for (CircuitElement element : moved) rerouteElementWires(element);
+        if (canvas != null) canvas.renderWiresOnly();
+    }
+
+    public void endLiveMove(Collection<String> ids, double dx, double dy) {
+        if (!liveMoving) return;
+        liveMove(ids, dx, dy);
+        liveMoving = false;
+
+        List<MoveElementsCommand.Move> moves = new ArrayList<>();
+        for (String id : ids) {
+            MoveOrigin origin = liveMoveOrigins.get(id);
+            if (origin == null) continue;
+            CircuitElement element = origin.element();
+            if (origin.x() != element.getX() || origin.y() != element.getY()) {
+                moves.add(new MoveElementsCommand.Move(
+                        element, origin.x(), origin.y(), element.getX(), element.getY()));
+            }
+        }
+
+        WireChangeCommand.Image wiresBefore = liveMoveWiresBefore;
+        liveMoveWiresBefore = null;
+        liveMoveOrigins.clear();
+        if (!moves.isEmpty()) {
+            recordWithWires("Move elements", wiresBefore, new MoveElementsCommand(moves));
+        }
+        notifyRender();
     }
 
     // Wire drawing — called by CircuitCanvas mouse handlers
@@ -233,56 +295,67 @@ public class EditorController {
     private static final double WIRE_SELECT_THRESHOLD = 8.0;
 
     public void onWireMousePressed(double x, double y) {
+        Port port = findPortAt(x, y);
+        if (port != null) {
+            onWireStartFromPort(port);
+        } else {
+            onWireStartFromCanvas(x, y);
+        }
+    }
+
+    public void onWireStartFromPort(Port port) {
+        wireGestureBefore = WireChangeCommand.capture(circuit);
+        dragStartPort = port;
+        dragStartNode = null;
+        dragStartSegment = null;
+        dragStartX = CircuitCanvas.snap(port.getAbsX());
+        dragStartY = CircuitCanvas.snap(port.getAbsY());
+        drawingWire = true;
+        bendDirectionLocked = false;
+    }
+
+    public boolean onWireStartFromCanvas(double x, double y) {
         wireGestureBefore = WireChangeCommand.capture(circuit);
         x = CircuitCanvas.snap(x);
         y = CircuitCanvas.snap(y);
         dragStartNode = null;
         dragStartPort = null;
         dragStartSegment = null;
-        // Try to hit a port first
-        Port hitPort = findPortAt(x, y);
-        if (hitPort != null) {
-            dragStartPort = hitPort;
-            dragStartNode = null;
-            // Snap so the wire start is always on a grid dot.
-            // Port.getAbsX() = element.getX() + relX. element.getX() is snapped but relX is a
-            // raw scaled value that may not be a multiple of GRID_SIZE. Snapping here ensures
-            // the start coordinate matches any snapped mouse position during drag, preventing
-            // spurious L-bends when the user drags perfectly vertical or horizontal.
-            dragStartX = CircuitCanvas.snap(hitPort.getAbsX());
-            dragStartY = CircuitCanvas.snap(hitPort.getAbsY());
-            drawingWire = true;
-            bendDirectionLocked = false;
-            return;
-        }
 
-        // Try to hit an existing PointNode (junction, corner, or free end)
         PointNode hitNode = findNodeAt(x, y);
         if (hitNode != null) {
-            dragStartPort = null;
             dragStartNode = hitNode;
             dragStartX = CircuitCanvas.snap(hitNode.getX());
             dragStartY = CircuitCanvas.snap(hitNode.getY());
             drawingWire = true;
             bendDirectionLocked = false;
-            return;
+            return true;
         }
 
-        // Try to hit the body of an existing WireSegment
         WireSegment hitSeg = findWireSegmentAt(x, y);
         if (hitSeg != null) {
-            PointNode junction = circuit.splitSegmentAtJunction(hitSeg, x, y);
-            dragStartPort = null;
-            dragStartNode = junction;
-            dragStartX = CircuitCanvas.snap(junction.getX());
-            dragStartY = CircuitCanvas.snap(junction.getY());
+            dragStartSegment = hitSeg;
+            double sx = x;
+            double sy = y;
+            if (hitSeg.isHorizontal()) {
+                sy = hitSeg.getY1();
+                sx = Math.clamp(x, Math.min(hitSeg.getX1(), hitSeg.getX2()),
+                        Math.max(hitSeg.getX1(), hitSeg.getX2()));
+            } else {
+                sx = hitSeg.getX1();
+                sy = Math.clamp(y, Math.min(hitSeg.getY1(), hitSeg.getY2()),
+                        Math.max(hitSeg.getY1(), hitSeg.getY2()));
+            }
+            dragStartX = CircuitCanvas.snap(sx);
+            dragStartY = CircuitCanvas.snap(sy);
             drawingWire = true;
             bendDirectionLocked = false;
-            return;
+            return true;
         }
 
         drawingWire = false;
         wireGestureBefore = null;
+        return false;
     }
 
     public double[] onWireMouseDragged(double mouseX, double mouseY) {
@@ -640,6 +713,11 @@ public class EditorController {
     // ── Component movement — stretch attached wire segments ───────────────────
 
     public void onComponentMoved(CircuitElement element) {
+        rerouteElementWires(element);
+        notifyRender();
+    }
+
+    private void rerouteElementWires(CircuitElement element) {
         List<Port> ports = getAllPorts(element);
 
         for (Port p : ports) {
@@ -655,9 +733,12 @@ public class EditorController {
 
             for (WireSegment seg : attached) {
                 boolean isStart = (seg.getStartPort() == p);
-                double otherX = isStart ? seg.getX2() : seg.getX1();
-                double otherY = isStart ? seg.getY2() : seg.getY1();
+                Port otherPort = isStart ? seg.getEndPort() : seg.getStartPort();
                 PointNode otherNode = isStart ? seg.getEndNode() : seg.getStartNode();
+                double otherX = otherPort != null ? otherPort.getAbsX()
+                        : otherNode != null ? otherNode.getX() : isStart ? seg.getX2() : seg.getX1();
+                double otherY = otherPort != null ? otherPort.getAbsY()
+                        : otherNode != null ? otherNode.getY() : isStart ? seg.getY2() : seg.getY1();
 
                 // If other end is a corner PointNode that connects exactly 2 segments (bend corner):
                 if (otherNode != null && otherNode.getConnectedSegments().size() == 2) {
@@ -748,7 +829,6 @@ public class EditorController {
                 }
             }
         }
-        notifyRender();
     }
 
     public boolean isDrawingWire() {
