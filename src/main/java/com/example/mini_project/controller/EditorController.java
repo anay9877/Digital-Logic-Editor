@@ -96,6 +96,7 @@ public class EditorController {
         circuit.addElement(element);
         stopSimulation();
         history.record(new PlaceElementCommand(circuit, element));
+        selection.clear();
     }
 
     public void toggleInput(InputElement input) {

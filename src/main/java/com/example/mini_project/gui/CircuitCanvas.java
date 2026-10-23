@@ -436,6 +436,7 @@ public class CircuitCanvas extends Pane {
             icon.setLayoutX(elem.getX());
             icon.setLayoutY(elem.getY());
             icon.setUserData(elem.getId());
+            icon.setPickOnBounds(true);
 
             if (controller.getSelection().isElementSelected(elem.getId())) {
                 icon.setEffect(new DropShadow(15, Color.CYAN));
@@ -500,17 +501,14 @@ public class CircuitCanvas extends Pane {
 
             icon.setOnMouseClicked(ev -> {
                 if (ev.getButton() != MouseButton.PRIMARY) return;
-                if (!ev.isStillSincePress()) return;
+                if (!isSelectToolActive()) return;
+                ev.consume();
                 if (elem instanceof InputElement input && isSelectToolActive()) {
                     controller.toggleInput(input);
-                    ev.consume();
                     boolean additive = ev.isShiftDown() || ev.isControlDown();
                     controller.getSelection().selectElement(elem.getId(), additive);
                     return;
                 }
-                if (!isSelectToolActive()) return;
-                // Normal component selection
-                ev.consume();
                 boolean additive = ev.isShiftDown() || ev.isControlDown();
                 controller.getSelection().selectElement(elem.getId(), additive);
             });
