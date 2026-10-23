@@ -155,12 +155,17 @@ public class EditorController {
             simulator = new CircuitSimulator(circuit, order);
             simulating = true;
             printLedOutputs(order);
+            System.out.println(generateTruthTable(order));
             notifyRender();            // redraws LEDs: ON -> LED_ON_SVG, OFF -> LED_OFF_SVG
         } catch (IllegalStateException ex) {
             System.err.println("Cannot simulate: " + ex.getMessage());
             simulating = false;
             simulator = null;
         }
+    }
+
+    public String generateTruthTable(List<CircuitElement> order) {
+        return TruthTableGenerator.generate(circuit, order);
     }
 
     private void printLedOutputs(List<CircuitElement> order) {
