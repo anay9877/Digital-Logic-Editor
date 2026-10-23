@@ -10,5 +10,6 @@ public enum ToolbarOptions {
     Zoom_Out,
     Simulate,
     Validate,
+    Home,
     Unknown;
 }
