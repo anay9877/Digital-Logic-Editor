@@ -50,14 +50,10 @@ public class ConnectionValidator {
         return drivers;
     }
     private Object getStart(WireSegment wire) {
-        return wire.getStartPort() != null
-                ? wire.getStartPort()
-                : wire.getStartNode();
+        return wire.getStartPort() != null ? wire.getStartPort() : wire.getStartNode();
     }
     private Object getEnd(WireSegment wire) {
-        return wire.getEndPort() != null
-                ? wire.getEndPort()
-                : wire.getEndNode();
+        return wire.getEndPort() != null ? wire.getEndPort() : wire.getEndNode();
     }
     public String checkInputToInput(Object start, Object end) {
         if (start instanceof Port startPort && end instanceof Port endPort) {
@@ -130,8 +126,7 @@ public class ConnectionValidator {
                 }
             }
         }
-        Map<CircuitElement, Integer> state =
-                new IdentityHashMap<>();
+        Map<CircuitElement, Integer> state = new IdentityHashMap<>();
         for (CircuitElement gate : gateGraph.keySet()) {
             if (hasCycle(gate, gateGraph, state)) {
                 return "Combinational cycle detected.";
@@ -145,9 +140,7 @@ public class ConnectionValidator {
         }
         return endpoint;
     }
-    private void connect(
-            Map<Object, Set<Object>> graph,
-            Object a, Object b) {
+    private void connect(Map<Object, Set<Object>> graph, Object a, Object b) {
         if (a == null || b == null) return;
         graph.computeIfAbsent(a, k -> Collections.newSetFromMap(new IdentityHashMap<>())).add(b);
         graph.computeIfAbsent(b, k -> Collections.newSetFromMap(new IdentityHashMap<>())).add(a);
