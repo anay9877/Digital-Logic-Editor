@@ -40,6 +40,21 @@ public class Circuit {
         pointNodes.clear();
     }
 
+    public void resetSignals() {
+        for (WireSegment wire : wireSegments) {
+            wire.setState(SignalState.UNKNOWN);
+        }
+        for (CircuitElement element : elements.values()) {
+            if (element instanceof InputElement input) {
+                input.getOutputPort().setValue(input.getValue());
+            } else if (element instanceof Gate gate) {
+                for (Port port : gate.getAllPorts()) port.setValue(SignalState.UNKNOWN);
+            } else if (element instanceof OutputElement output) {
+                output.getInputPort().setValue(SignalState.UNKNOWN);
+            }
+        }
+    }
+
     public boolean removeElement(String id) {
         if (elements.remove(id) == null) return false;        // unknown or already deleted
 

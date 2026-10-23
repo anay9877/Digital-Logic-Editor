@@ -112,18 +112,6 @@ public class CircuitSerializer {
         return GSON.toJson(dto);
     }
 
-    public static String snapshot(Circuit circuit) {
-        return toJson(circuit, null);          // null viewport: zoom/pan are not part of history
-    }
-
-    public static void restore(String json, Circuit circuit) {
-        if (json == null || json.isBlank()) return;
-        CircuitDto dto = GSON.fromJson(json, CircuitDto.class);
-        if (dto == null) return;
-        circuit.clear();                       // no counter, id or viewport resets
-        rebuildModel(dto, circuit, null);
-    }
-
     public static void fromJson(String json, Circuit circuit, ViewportManager viewport, EditorController controller) {
         if (json == null || json.isBlank()) return;
         CircuitDto dto = GSON.fromJson(json, CircuitDto.class);

@@ -89,4 +89,10 @@ public class PointNode {
         connectedSegments.remove(seg);
         junction = connectedSegments.size() >= 3;
     }
+
+    public void restoreConnections(List<WireSegment> segments) {
+        connectedSegments.clear();
+        connectedSegments.addAll(segments);
+        junction = connectedSegments.size() >= 3;
+    }
 }

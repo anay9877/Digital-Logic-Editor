@@ -4,10 +4,11 @@ import com.example.mini_project.domain.*;
 import com.example.mini_project.gui.CircuitCanvas;
 import com.example.mini_project.gui.ToolbarOptions;
 import com.example.mini_project.validation.*;
-import com.example.mini_project.persistence.CircuitSerializer;
+import com.example.mini_project.controller.command.*;
 import com.example.mini_project.validation.CircuitSimulator;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -30,6 +31,7 @@ public class EditorController {
     private double dragStartX, dragStartY;
     private boolean horizontalFirst = true;
     private boolean bendDirectionLocked = false;
+    private WireChangeCommand.Image wireGestureBefore;
     private CircuitSimulator simulator;
     private boolean simulating = false;
     private boolean isValidated = false;
@@ -38,7 +40,6 @@ public class EditorController {
 
     public EditorController(Circuit circuit) {
         this.circuit = circuit;
-        history.reset(CircuitSerializer.snapshot(circuit));   // baseline: empty circuit
     }
 
     public void setCanvas(CircuitCanvas canvas) {
@@ -67,6 +68,9 @@ public class EditorController {
         drawingWire = false;
         dragStartPort = null;
         dragStartNode = null;
+        dragStartSegment = null;
+        wireGestureBefore = null;
+        history.clear();
         if (canvas != null && canvas.getViewportManager() != null) {
             canvas.getViewportManager().resetView();
         }
@@ -83,16 +87,17 @@ public class EditorController {
         int n = counters.getOrDefault(type, 0) + 1;
         counters.put(type, n);
         String id = type.name() + "-" + n;
-        circuit.addElement(type.create(id, CircuitCanvas.snap(x), CircuitCanvas.snap(y)));
+        CircuitElement element = type.create(id, CircuitCanvas.snap(x), CircuitCanvas.snap(y));
+        circuit.addElement(element);
         stopSimulation();
-//        notifyRender();
-        recordChange();
+        history.record(new PlaceElementCommand(circuit, element));
     }
 
     public void toggleInput(InputElement input) {
+        SignalState before = input.getValue();
         input.toggle();
         notifyRender();
-        recordChange();
+        history.record(new ToggleInputCommand(input, before, input.getValue()));
     }
 
     // Tells which option is selected from toolbar(implemented just for select and delete)
@@ -115,17 +120,24 @@ public class EditorController {
         Set<String> wireIds = selection.getSelectedWires();
         if (elementIds.isEmpty() && wireIds.isEmpty()) return;
 
-        boolean changed = false;
+        WireChangeCommand.Image wiresBefore = WireChangeCommand.capture(circuit);
+        List<CircuitElement> removedElements = new ArrayList<>();
         for (String id : elementIds) {
-            changed |= onElementDeleted(id);                       // its cascade may already remove some selected wires
+            CircuitElement element = circuit.getElement(id);
+            if (onElementDeleted(id) && element != null) removedElements.add(element);
         }
-        changed |= circuit.removeWireSegments(wireIds) > 0;        // already-removed ids are skipped
+        boolean wiresRemoved = circuit.removeWireSegments(wireIds) > 0;
 
         selection.clear();
-        if (changed) {
+        if (!removedElements.isEmpty() || wiresRemoved) {
             stopSimulation();
             notifyRender();
-            recordChange();
+            if (removedElements.isEmpty()) {
+                recordWithWires("Delete wires", wiresBefore);
+            } else {
+                recordWithWires("Delete selection", wiresBefore,
+                        new RemoveElementsCommand(circuit, removedElements));
+            }
         }
     }
 
@@ -191,22 +203,25 @@ public class EditorController {
     }
 
     public void moveElements(Collection<String> ids, double dx, double dy) {
-        boolean changed = false;
+        WireChangeCommand.Image wiresBefore = WireChangeCommand.capture(circuit);
+        List<MoveElementsCommand.Move> moves = new ArrayList<>();
         for (String id : ids) {
             CircuitElement e = circuit.getElement(id);
             if (e != null) {
+                double oldX = e.getX();
+                double oldY = e.getY();
                 double newX = CircuitCanvas.snap(e.getX() + dx);
                 double newY = CircuitCanvas.snap(e.getY() + dy);
                 if (newX == e.getX() && newY == e.getY()) continue;
                 e.setPosition(newX, newY);
                 onComponentMoved(e);
-                changed = true;
+                moves.add(new MoveElementsCommand.Move(e, oldX, oldY, newX, newY));
             }
         }
-        if (changed) {
+        if (!moves.isEmpty()) {
             stopSimulation();
             notifyRender();
-            recordChange();
+            recordWithWires("Move elements", wiresBefore, new MoveElementsCommand(moves));
         }
     }
 
@@ -218,6 +233,7 @@ public class EditorController {
     private static final double WIRE_SELECT_THRESHOLD = 8.0;
 
     public void onWireMousePressed(double x, double y) {
+        wireGestureBefore = WireChangeCommand.capture(circuit);
         x = CircuitCanvas.snap(x);
         y = CircuitCanvas.snap(y);
         dragStartNode = null;
@@ -266,6 +282,7 @@ public class EditorController {
         }
 
         drawingWire = false;
+        wireGestureBefore = null;
     }
 
     public double[] onWireMouseDragged(double mouseX, double mouseY) {
@@ -303,7 +320,7 @@ public class EditorController {
             handleWireRelease(mouseX, mouseY);
         } finally {
             stopSimulation();
-            recordChange();                // runs on every exit path of the old method
+            commitWireGesture();
         }
     }
 
@@ -745,36 +762,52 @@ public class EditorController {
         return history;
     }
 
-    private void recordChange() {
-        history.record(CircuitSerializer.snapshot(circuit));
+    /**
+     * Records the already-applied command together with any wiring changes made by the same action.
+     */
+    private void recordWithWires(String label, WireChangeCommand.Image wiresBefore, Command... commands) {
+        List<Command> parts = new ArrayList<>(Arrays.asList(commands));
+        WireChangeCommand wires = WireChangeCommand.diff(circuit, wiresBefore, WireChangeCommand.capture(circuit));
+        if (wires != null) parts.add(wires);
+        if (parts.isEmpty()) return;
+        history.record(parts.size() == 1 ? parts.get(0) : new CompositeCommand(label, parts));
+    }
+
+    private void commitWireGesture() {
+        if (wireGestureBefore == null) return;
+        WireChangeCommand.Image before = wireGestureBefore;
+        wireGestureBefore = null;
+        WireChangeCommand wires = WireChangeCommand.diff(circuit, before, WireChangeCommand.capture(circuit));
+        if (wires == null) return;
+        history.record(wires);
+        notifyRender();
     }
 
     public void resetHistory() {
-        history.reset(CircuitSerializer.snapshot(circuit));
+        history.clear();
     }
 
     public void undo() {
-        if (drawingWire) return;           // never swap the model under an in-progress wire
-        recordChange();                    // safety net: capture any unrecorded change first
-        String prev = history.undo();
-        if (prev != null) applySnapshot(prev);
+        if (drawingWire) return;
+        commitWireGesture();
+        if (history.undo()) afterHistoryStep();
     }
 
     public void redo() {
         if (drawingWire) return;
-        recordChange();
-        String next = history.redo();
-        if (next != null) applySnapshot(next);
+        commitWireGesture();
+        if (history.redo()) afterHistoryStep();
     }
 
-    private void applySnapshot(String json) {
-        CircuitSerializer.restore(json, circuit);
+    private void afterHistoryStep() {
         drawingWire = false;
         dragStartPort = null;
         dragStartNode = null;
-        selection.clear();                 // selected ids may no longer exist
+        dragStartSegment = null;
+        selection.clear();
+        circuit.resetSignals();
         stopSimulation();
-        notifyRender();                    // re-simulate and redraw
+        notifyRender();
     }
 
     public void notifyRender() {

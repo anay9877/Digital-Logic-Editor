@@ -420,7 +420,7 @@ public class CircuitCanvas extends Pane {
                 if (ev.getButton() != MouseButton.PRIMARY) return;
                 if (!ev.isStillSincePress()) return;
                 if (elem instanceof InputElement input) {
-                    input.toggle();
+                    controller.toggleInput(input);
                     ev.consume();
                     if (isSelectToolActive()) {
                         boolean additive =
