@@ -4,7 +4,6 @@ public enum ToolbarOptions {
     Select,
     Hand,
     Delete,
-    Wire,
     Undo,
     Redo,
     Zoom_In,

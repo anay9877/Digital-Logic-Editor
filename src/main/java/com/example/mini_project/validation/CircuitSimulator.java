@@ -100,7 +100,7 @@ public class CircuitSimulator {
                     port.setValue(signal);
                 }
             } else if (far instanceof PointNode node) {
-                // Plain bend / free end -> single continuation.
+                // Plain bend -> single continuation.
                 // Junction (3+ wires)   -> several branches become checkpoints.
                 pushBranches(node, wire, stack);
             }
