@@ -25,6 +25,10 @@ public final class ValidationErrorPanel extends VBox {
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private final Button toggleButton = new Button("⌄");
+    //prajw : start
+    // Adds an explicit way to remove the accumulated error history from the panel.
+    private final Button clearButton = new Button("Clear");
+    //prajw: end
     private final Label title = new Label("Errors");
     private final VBox errorList = new VBox(8);
     private final ScrollPane scrollPane = new ScrollPane(errorList);
@@ -36,13 +40,22 @@ public final class ValidationErrorPanel extends VBox {
         setMinHeight(0);
         setMaxHeight(Double.MAX_VALUE);
 
-        HBox header = new HBox(8, title, new Region(), toggleButton);
+        //prajw : start
+        // Keep Clear beside the count so the accumulated history can be reset without closing the panel.
+        HBox header = new HBox(8, title, new Region(), clearButton, toggleButton);
+        //prajw: end
         HBox.setHgrow(header.getChildren().get(1), Priority.ALWAYS);
         header.setPadding(new Insets(4));
         header.setStyle("-fx-background-color: #e6e6e6;");
         toggleButton.setFocusTraversable(false);
         toggleButton.setOnAction(event -> setExpanded(!expanded));
         toggleButton.setTooltip(new Tooltip("Open error history"));
+        //prajw : start
+        // Clear starts disabled and becomes available only when the panel contains errors.
+        clearButton.setFocusTraversable(false);
+        clearButton.setOnAction(event -> clearErrors());
+        clearButton.setDisable(true);
+        //prajw: end
         header.setAlignment(Pos.CENTER_LEFT);
 
         errorList.setPadding(new Insets(10));
@@ -78,16 +91,33 @@ public final class ValidationErrorPanel extends VBox {
             errorCount++;
         }
 
+        //prajw : start
+        // Keep the count accurate and enable clearing after adding a new batch of errors.
         title.setText("Errors (" + errorCount + ")");
+        clearButton.setDisable(false);
+        //prajw: end
         setExpanded(true);
         Platform.runLater(() -> scrollPane.setVvalue(1.0));
     }
+
+    //prajw : start
+    // Clear removes only the displayed history, resets its count and disables itself until new errors arrive.
+    private void clearErrors() {
+        errorList.getChildren().clear();
+        errorCount = 0;
+        title.setText("Errors (0)");
+        clearButton.setDisable(true);
+        toggleButton.setTooltip(new Tooltip("Open error history (0 errors)"));
+    }
+    //prajw: end
 
     // Resizes the top-right overlay so opening it extends left and downward.
     private void setExpanded(boolean expanded) {
         this.expanded = expanded;
         title.setVisible(expanded);
         title.setManaged(expanded);
+        clearButton.setVisible(expanded);
+        clearButton.setManaged(expanded);
         scrollPane.setVisible(expanded);
         scrollPane.setManaged(expanded);
         toggleButton.setText(expanded ? "⌃" : (errorCount > 0 ? "!" : "⌄"));
