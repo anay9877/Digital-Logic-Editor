@@ -286,4 +286,56 @@ class CommandHistoryTest {
         assertEquals(40, source.getY());
         assertEquals(1, circuit.getWireSegments().size());
     }
+
+    //prajw : start
+    @Test
+    void movingBothEndsOfAJunctionMovesItAndReroutesStationaryBranches() {
+        Circuit circuit = new Circuit();
+        InputElement first = (InputElement) ComponentType.SWITCH.create("SWITCH-1", 0, 0);
+        InputElement second = (InputElement) ComponentType.SWITCH.create("SWITCH-2", 200, 0);
+        InputElement stationary = (InputElement) ComponentType.SWITCH.create("SWITCH-3", 400, 0);
+        circuit.addElement(first);
+        circuit.addElement(second);
+        circuit.addElement(stationary);
+
+        double firstX = first.getOutputPort().getAbsX();
+        double y = first.getOutputPort().getAbsY();
+        PointNode junction = new PointNode(firstX + 100, y);
+        circuit.addPointNode(junction);
+
+        WireSegment firstWire = WireSegment.portToNode(
+                first.getOutputPort(), firstX, y, junction);
+        WireSegment secondWire = WireSegment.portToNode(
+                second.getOutputPort(), second.getOutputPort().getAbsX(), y, junction);
+        WireSegment stationaryWire = WireSegment.portToNode(
+                stationary.getOutputPort(), stationary.getOutputPort().getAbsX(), y, junction);
+        circuit.addWireSegment(firstWire);
+        circuit.addWireSegment(secondWire);
+        circuit.addWireSegment(stationaryWire);
+        EditorController controller = new EditorController(circuit);
+
+        controller.moveElements(List.of(first.getId(), second.getId()), 40, 40);
+
+        assertEquals(firstX + 100 + 40, junction.getX());
+        assertEquals(y + 40, junction.getY());
+        assertTrue(junction.isJunction());
+        assertEquals(3, junction.getConnectedSegments().size());
+        assertEquals(4, circuit.getWireSegments().size());
+        assertTrue(circuit.getWireSegments().stream()
+                .allMatch(segment -> segment.isHorizontal() || segment.isVertical()));
+        assertTrue(circuit.getConnectedWires(firstWire).contains(stationaryWire));
+        WireSegment stationaryLead = circuit.getWireSegments().stream()
+                .filter(segment -> segment.getStartPort() == stationary.getOutputPort()
+                        || segment.getEndPort() == stationary.getOutputPort())
+                .findFirst()
+                .orElseThrow();
+        if (stationaryLead.getStartPort() == stationary.getOutputPort()) {
+            assertEquals(stationary.getOutputPort().getAbsX(), stationaryLead.getX1());
+            assertEquals(stationary.getOutputPort().getAbsY(), stationaryLead.getY1());
+        } else {
+            assertEquals(stationary.getOutputPort().getAbsX(), stationaryLead.getX2());
+            assertEquals(stationary.getOutputPort().getAbsY(), stationaryLead.getY2());
+        }
+    }
+    //prajw: end
 }

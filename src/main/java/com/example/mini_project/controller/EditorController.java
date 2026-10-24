@@ -230,6 +230,9 @@ public class EditorController {
             }
         }
         if (!moves.isEmpty()) {
+            //prajw : start
+            moveJunctionsWithMovedPorts(movedElements);
+            //prajw: end
             for (CircuitElement element : movedElements) rerouteElementWires(element);
             stopSimulation();
             notifyRender();
@@ -263,6 +266,9 @@ public class EditorController {
             element.setPosition(CircuitCanvas.snap(origin.x() + dx), CircuitCanvas.snap(origin.y() + dy));
             moved.add(element);
         }
+        //prajw : start
+        moveJunctionsWithMovedPorts(moved);
+        //prajw: end
         for (CircuitElement element : moved) rerouteElementWires(element);
         if (canvas != null) canvas.renderWiresOnly();
     }
@@ -721,6 +727,115 @@ public class EditorController {
         rerouteElementWires(element);
         notifyRender();
     }
+
+    //prajw : start
+    private void moveJunctionsWithMovedPorts(List<CircuitElement> movedElements) {
+        List<String> movedElementIds = new ArrayList<>();
+        for (CircuitElement element : movedElements) {
+            movedElementIds.add(element.getId());
+        }
+
+        for (PointNode junction : new ArrayList<>(circuit.getPointNodes())) {
+            if (!junction.isJunction()) continue;
+
+            List<Port> movedPorts = new ArrayList<>();
+            double deltaX = 0;
+            double deltaY = 0;
+            boolean hasDelta = false;
+            boolean consistentDelta = true;
+
+            for (WireSegment segment : junction.getConnectedSegments()) {
+                Port port = segment.getStartNode() == junction
+                        ? segment.getEndPort()
+                        : segment.getStartPort();
+                if (port == null || !movedElementIds.contains(port.getOwner().getId())
+                        || movedPorts.contains(port)) {
+                    continue;
+                }
+
+                double oldX = segment.getStartPort() == port ? segment.getX1() : segment.getX2();
+                double oldY = segment.getStartPort() == port ? segment.getY1() : segment.getY2();
+                double portDeltaX = port.getAbsX() - oldX;
+                double portDeltaY = port.getAbsY() - oldY;
+                if (!hasDelta) {
+                    deltaX = portDeltaX;
+                    deltaY = portDeltaY;
+                    hasDelta = true;
+                } else if (Math.abs(deltaX - portDeltaX) >= 0.001
+                        || Math.abs(deltaY - portDeltaY) >= 0.001) {
+                    consistentDelta = false;
+                    break;
+                }
+                movedPorts.add(port);
+            }
+
+            if (consistentDelta && movedPorts.size() >= 2
+                    && (Math.abs(deltaX) >= 0.001 || Math.abs(deltaY) >= 0.001)) {
+                movePointNodeAndReroute(junction, junction.getX() + deltaX, junction.getY() + deltaY);
+            }
+        }
+    }
+
+    private void movePointNodeAndReroute(PointNode node, double x, double y) {
+        node.setX(x);
+        node.setY(y);
+
+        for (WireSegment segment : new ArrayList<>(node.getConnectedSegments())) {
+            boolean nodeAtStart = segment.getStartNode() == node;
+            Port farPort = nodeAtStart ? segment.getEndPort() : segment.getStartPort();
+            PointNode farNode = nodeAtStart ? segment.getEndNode() : segment.getStartNode();
+            double farX = farPort != null ? farPort.getAbsX() : farNode.getX();
+            double farY = farPort != null ? farPort.getAbsY() : farNode.getY();
+
+            if (Math.abs(x - farX) < 0.001 || Math.abs(y - farY) < 0.001) {
+                if (nodeAtStart) {
+                    segment.setX1(x);
+                    segment.setY1(y);
+                    segment.setX2(farX);
+                    segment.setY2(farY);
+                } else {
+                    segment.setX1(farX);
+                    segment.setY1(farY);
+                    segment.setX2(x);
+                    segment.setY2(y);
+                }
+                continue;
+            }
+
+            PointNode bend = new PointNode(farX, y);
+            circuit.addPointNode(bend);
+            if (farNode != null) {
+                farNode.removeSegment(segment);
+            }
+
+            if (nodeAtStart) {
+                segment.setX1(x);
+                segment.setY1(y);
+                segment.setX2(farX);
+                segment.setY2(y);
+                segment.setEndNode(bend);
+                bend.addSegment(segment);
+
+                WireSegment remainingLeg = farPort != null
+                        ? WireSegment.nodeToPort(bend, farPort, farX, farY)
+                        : WireSegment.nodeToNode(bend, farNode);
+                circuit.addWireSegment(remainingLeg);
+            } else {
+                segment.setX1(farX);
+                segment.setY1(y);
+                segment.setX2(x);
+                segment.setY2(y);
+                segment.setStartNode(bend);
+                bend.addSegment(segment);
+
+                WireSegment remainingLeg = farPort != null
+                        ? WireSegment.portToNode(farPort, farX, farY, bend)
+                        : WireSegment.nodeToNode(farNode, bend);
+                circuit.addWireSegment(remainingLeg);
+            }
+        }
+    }
+    //prajw: end
 
     private void rerouteElementWires(CircuitElement element) {
         List<Port> ports = getAllPorts(element);
