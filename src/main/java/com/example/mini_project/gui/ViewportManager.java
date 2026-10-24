@@ -16,8 +16,7 @@ import javafx.scene.transform.Scale;
 public class ViewportManager {
     private final Group view;
     private final Scale scale = new Scale(1, 1, 0, 0);
-    private Runnable onChange = () -> {
-    };
+    private Runnable onChange = () -> {};
 
     private double zoom = 1.0;
     private static final double MIN_ZOOM = 0.25;

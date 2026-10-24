@@ -15,6 +15,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Polyline;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.control.Label;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +56,7 @@ public class CircuitCanvas extends Pane {
     private final Group contentGroup = new Group();
     private final Canvas gridCanvas = new Canvas();
     private final Group nodeLayer = new Group();
+    private final Label hoverLabel = new Label();
 
     private final ViewportManager viewportManager;
     private final SvgIconRegistry iconRegistry = new SvgIconRegistry();
@@ -94,6 +96,11 @@ public class CircuitCanvas extends Pane {
         gridCanvas.heightProperty().bind(heightProperty());
 
         contentGroup.getChildren().add(nodeLayer);
+        hoverLabel.setStyle("-fx-background-color: #e9e9e5;" + "-fx-font-size: 12px;" +
+                            "-fx-padding: 5 10 5 10;" + "fx-text-fill: white;");
+        hoverLabel.setVisible(false);
+        hoverLabel.setMouseTransparent(true);
+        contentGroup.getChildren().add(hoverLabel);
 
         rubberBand.setFill(Color.rgb(0, 200, 255, 0.15));
         rubberBand.setStroke(Color.CYAN);
@@ -318,6 +325,7 @@ public class CircuitCanvas extends Pane {
     // Rendering
     // Full redraw of circuit elements. Called after any state change.
     public void render() {
+        hoverLabel.setVisible(false);
         nodeLayer.getChildren().clear();
 
         // 1. Wire segments (straight orthogonal lines)
@@ -371,7 +379,20 @@ public class CircuitCanvas extends Pane {
             icon.setLayoutX(elem.getX());
             icon.setLayoutY(elem.getY());
             icon.setUserData(elem.getId());
-
+            icon.setOnMouseEntered(e -> {
+                hoverLabel.setText(elem.getId());
+                hoverLabel.applyCss();
+                hoverLabel.autosize();
+                double componentWidth = elem instanceof Gate ? 128 : 64;
+                double labelX = elem.getX() + (componentWidth - hoverLabel.getWidth()) / 2;
+                double labelY = elem.getY() - hoverLabel.getHeight() / 3;
+                hoverLabel.relocate(labelX, labelY);
+                hoverLabel.setVisible(true);
+                hoverLabel.toFront();
+            });
+            icon.setOnMouseExited(e -> {
+                hoverLabel.setVisible(false);
+            });
             if (controller.getSelection().isElementSelected(elem.getId())) {
                 icon.setEffect(new DropShadow(15, Color.CYAN));
             }
@@ -425,10 +446,8 @@ public class CircuitCanvas extends Pane {
                     input.toggle();
                     ev.consume();
                     if (isSelectToolActive()) {
-                        boolean additive =
-                                ev.isShiftDown() || ev.isControlDown();
-                        controller.getSelection()
-                                .selectElement(elem.getId(), additive);
+                        boolean additive = ev.isShiftDown() || ev.isControlDown();
+                        controller.getSelection().selectElement(elem.getId(), additive);
                     } else {
                         render();
                     }
