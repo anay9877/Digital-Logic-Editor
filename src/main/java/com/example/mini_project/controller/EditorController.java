@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class EditorController {
 
@@ -38,6 +39,9 @@ public class EditorController {
     private CircuitSimulator simulator;
     private boolean simulating = false;
     private boolean isValidated = false;
+    //prajw : start
+    private Consumer<List<String>> onValidationErrors;
+    //prajw: end
 
     private CircuitCanvas canvas;
 
@@ -62,6 +66,13 @@ public class EditorController {
     public CircuitCanvas getCanvas() {
         return canvas;
     }
+
+    //prajw : start
+    /** Sets the UI callback that receives a batch of validation errors. */
+    public void setOnValidationErrors(Consumer<List<String>> listener) {
+        onValidationErrors = listener;
+    }
+    //prajw: end
 
     // Used for deletion of entire circuit
     public void newCircuit() {
@@ -159,13 +170,37 @@ public class EditorController {
         boolean logicValid = validator.validateDeadLogic(circuit);
         boolean referencesValid = validator.validateWireReferences(circuit);
         if (!(wiresValid && inputsValid && ioValid && logicValid && referencesValid)) {
-            throw new IllegalStateException(
-                    "Circuit validation failed. See console for details."
-            );
+            //prajw : start
+            List<String> errors = validator.getErrors();
+            publishValidationErrors(errors);
+            throw new IllegalStateException(String.join(System.lineSeparator(), errors));
+            //prajw: end
         }
         isValidated = true;
-        return new CircuitTopology().sort(circuit);
+        //prajw : start
+        try {
+            return new CircuitTopology().sort(circuit);
+        } catch (IllegalStateException ex) {
+            publishValidationErrors(List.of(ex.getMessage()));
+            throw ex;
+        }
+        //prajw: end
     }
+
+    //prajw : start
+    private void publishValidationErrors(List<String> errors) {
+        if (onValidationErrors != null && !errors.isEmpty()) {
+            onValidationErrors.accept(List.copyOf(errors));
+        }
+    }
+    //prajw: end
+
+    //prajw : start
+    /** Publishes one non-validation error, such as a rejected wire connection. */
+    private void publishError(String error) {
+        publishValidationErrors(List.of(error));
+    }
+    //prajw: end
 
     public void runSimulation() {
         try {
@@ -423,7 +458,11 @@ public class EditorController {
             targetSegment = findWireSegmentAt(mouseX, mouseY);
         }
         if (targetPort == null && targetNode == null && targetSegment == null) {
-            System.err.println("CONNECTION REJECTED: Wire cannot end in empty space");
+            //prajw : start
+            String error = "CONNECTION REJECTED: Wire cannot end in empty space";
+            System.err.println(error);
+            publishError(error);
+            //prajw: end
             dragStartPort = null;
             dragStartNode = null;
             dragStartSegment = null;
@@ -449,7 +488,11 @@ public class EditorController {
             error = connectionValidator.checkDuplicateConnection(circuit, start, end);
         }
         if (error != null) {
-            System.err.println("CONNECTION REJECTED: " + error);
+            //prajw : start
+            String message = "CONNECTION REJECTED: " + error;
+            System.err.println(message);
+            publishError(message);
+            //prajw: end
             dragStartPort = null;
             dragStartNode = null;
             dragStartSegment = null;

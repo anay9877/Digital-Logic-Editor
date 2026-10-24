@@ -17,6 +17,9 @@ import javafx.scene.layout.VBox;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.stage.FileChooser;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.StackPane;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.stage.Stage;
 import javafx.stage.FileChooser;
 import javafx.scene.input.KeyCode;
@@ -33,6 +36,10 @@ public class EditorWindow extends Application {
 
         CircuitElementPalette palette = new CircuitElementPalette();
         CircuitCanvas canvas = new CircuitCanvas(controller);
+        //prajw : start
+        ValidationErrorPanel validationErrorPanel = new ValidationErrorPanel();
+        controller.setOnValidationErrors(validationErrorPanel::appendErrors);
+        //prajw: end
         controller.setCanvas(canvas);
         canvas.setPalette(palette);
         canvas.setToolbar(toolbar);
@@ -42,8 +49,13 @@ public class EditorWindow extends Application {
         VBox topContainer = new VBox(menuBar, toolbar);
 
         root.setTop(topContainer);
+        //prajw : start
+        StackPane canvasArea = new StackPane(canvas, validationErrorPanel);
+        StackPane.setAlignment(validationErrorPanel, Pos.TOP_RIGHT);
+        StackPane.setMargin(validationErrorPanel, new Insets(10));
         root.setLeft(palette);
-        root.setCenter(canvas);
+        root.setCenter(canvasArea);
+        //prajw: end
         root.setStyle("-fx-font-size: 13px;");
         palette.setStyle("-fx-padding: 10; -fx-spacing: 6; -fx-background-color: #eeeeee;");
 
