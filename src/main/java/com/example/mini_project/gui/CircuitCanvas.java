@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Mouse's left button  --> select / rubber band / drag elements / draw wires / pan with Hand
+ * Mouse's left button  --> select / rubber band / drag elements / draw wires
  * Mouse's right button --> pan the view
  * <p>
  * The main drawing surface for the circuit editor.
@@ -79,7 +79,6 @@ public class CircuitCanvas extends Pane {
     private Set<String> dragIds = Set.of();
     private double dragStartX, dragStartY;
     private boolean moving = false;
-    private boolean handPanning = false;
     private double dragOriginX, dragOriginY;   // grabbed element's position when the drag began
     private double lastSdx, lastSdy;           // last snapped offset that was applied
 
@@ -129,15 +128,6 @@ public class CircuitCanvas extends Pane {
             }
             if (e.getButton() != MouseButton.PRIMARY) return;
 
-            if (isHandToolActive()) {
-                handPanning = true;
-                lastMousePosition_X = e.getX();
-                lastMousePosition_Y = e.getY();
-                setCursor(Cursor.CLOSED_HAND);
-                e.consume();
-                return;
-            }
-
             // Wires and icons: icons are real nodes, wires are mouse-transparent, so a press that lands on the
             // background may still be on top of a wire body or a PointNode.
             boolean onBackground = e.getTarget() == this || e.getTarget() == contentGroup || e.getTarget() == gridCanvas;
@@ -166,16 +156,6 @@ public class CircuitCanvas extends Pane {
             e.consume();
         });
         setOnMouseDragged(e -> {
-            if (handPanning && e.isPrimaryButtonDown()) {
-                double dx = e.getX() - lastMousePosition_X;
-                double dy = e.getY() - lastMousePosition_Y;
-                viewportManager.translate(dx, dy);
-                lastMousePosition_X = e.getX();
-                lastMousePosition_Y = e.getY();
-                e.consume();
-                return;
-            }
-
             if (e.isSecondaryButtonDown()) {                       // pan
                 double dx = e.getX() - lastMousePosition_X;
                 double dy = e.getY() - lastMousePosition_Y;
@@ -207,13 +187,6 @@ public class CircuitCanvas extends Pane {
         });
 
         setOnMouseReleased(e -> {
-            if (e.getButton() == MouseButton.PRIMARY && handPanning) {
-                handPanning = false;
-                updateCursor();
-                e.consume();
-                return;
-            }
-
             if (e.getButton() == MouseButton.PRIMARY && controller.isDrawingWire()) {   // finish wire
                 if (previewLine != null) {
                     nodeLayer.getChildren().remove(previewLine);
@@ -268,7 +241,7 @@ public class CircuitCanvas extends Pane {
                 boolean additive = e.isShiftDown() || e.isControlDown();
                 controller.onSelectPoint(p.getX(), p.getY(), additive, e.getClickCount() >= 2);
             } else if (tool != null && tool != ToolbarOptions.Unknown
-                    && tool != ToolbarOptions.Select && tool != ToolbarOptions.Hand) {
+                    && tool != ToolbarOptions.Select) {
                 controller.optionSelected(tool);
             }
             render();
@@ -504,6 +477,8 @@ public class CircuitCanvas extends Pane {
                 if (ev.getButton() != MouseButton.PRIMARY) return;
                 if (!isSelectToolActive()) return;
                 ev.consume();
+                //prajw : start
+                // Keep a clicked gate selected until another selection action replaces or clears it.
                 if (elem instanceof InputElement input && isSelectToolActive()) {
                     controller.toggleInput(input);
                     boolean additive = ev.isShiftDown() || ev.isControlDown();
@@ -512,6 +487,7 @@ public class CircuitCanvas extends Pane {
                 }
                 boolean additive = ev.isShiftDown() || ev.isControlDown();
                 controller.getSelection().selectElement(elem.getId(), additive);
+                //prajw: end
             });
             nodeLayer.getChildren().add(icon);
         }
@@ -569,17 +545,13 @@ public class CircuitCanvas extends Pane {
 
     // Utility
 
+    //prajw : start
+    /** Selection is the normal canvas mode unless a palette item is armed for placement. */
     private boolean isSelectToolActive() {
-        return toolbarRef != null
-                && (toolbarRef.getSelected() == ToolbarOptions.Select
-                || toolbarRef.getSelected() == ToolbarOptions.Unknown)
-                && (paletteRef == null || paletteRef.getSelected() == null
-                || paletteRef.getSelected() == ComponentType.UNKNOWN);
+        return paletteRef == null || paletteRef.getSelected() == null
+                || paletteRef.getSelected() == ComponentType.UNKNOWN;
     }
-
-    private boolean isHandToolActive() {
-        return toolbarRef != null && toolbarRef.getSelected() == ToolbarOptions.Hand;
-    }
+    //prajw: end
 
     //Press on a port dot
     private void beginWireFrom(Port port) {
@@ -599,7 +571,7 @@ public class CircuitCanvas extends Pane {
     }
 
     private void updateCursor() {
-        setCursor(isHandToolActive() ? Cursor.OPEN_HAND : Cursor.DEFAULT);
+        setCursor(Cursor.DEFAULT);
     }
 
     private void returnToPointerMode() {

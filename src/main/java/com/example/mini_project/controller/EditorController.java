@@ -120,7 +120,10 @@ public class EditorController {
     // Tells which option is selected from toolbar(implemented just for select and delete)
     public void optionSelected(ToolbarOptions option) {
         switch (option) {
-            case Select, Hand -> selection.clear();
+            //prajw : start
+            // Explicitly choosing Select clears the old highlight; ordinary clicks keep the current selection.
+            case Select -> selection.clear();
+            //prajw: end
             case Delete -> handleDelete();
             case Validate -> handleValidate();
             case Simulate -> runSimulation();
@@ -561,6 +564,8 @@ public class EditorController {
     }
 
     public void onSelectPoint(double x, double y, boolean additive, boolean wholeWire) {
+        //prajw : start
+        // A hit changes the selected wire; an empty click clears selection only when it is not additive.
         WireSegment hit = findNearestWire(x, y);
         if (hit == null) {
             if (!additive) {
@@ -577,6 +582,7 @@ public class EditorController {
         } else {
             selection.selectWire(hit.getId(), additive);
         }
+        //prajw: end
     }
 
     public WireSegment findNearestWire(double x, double y) {

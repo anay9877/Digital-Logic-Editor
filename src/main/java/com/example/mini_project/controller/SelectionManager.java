@@ -13,6 +13,8 @@ public class SelectionManager {
         this.onChange = r;
     }
 
+    //prajw : start
+    // The selected item remains in this set until another selection action replaces or removes it.
     public void selectElement(String id, boolean additive) {
         if (!additive)
             clearSilently();
@@ -20,6 +22,7 @@ public class SelectionManager {
             selectedElements.remove(id); // shift-click toggles
         fire();
     }
+    //prajw: end
 
     public void selectElements(Collection<String> ids, boolean additive) {
         if (!additive)
@@ -28,6 +31,8 @@ public class SelectionManager {
         fire();
     }
 
+    //prajw : start
+    // Wire selection follows the same persistence and Shift/Control-toggle behavior as element selection.
     public void selectWire(String id, boolean additive) {
         if (!additive)
             clearSilently();
@@ -35,6 +40,7 @@ public class SelectionManager {
             selectedWires.remove(id);
         fire();
     }
+    //prajw: end
 
     public void selectWires(Collection<String> ids, boolean additive) {
         if (!additive) clearSilently();
@@ -42,10 +48,13 @@ public class SelectionManager {
         fire();
     }
 
+    //prajw : start
+    // Explicit clearing is used when the user clicks empty canvas or presses Escape.
     public void clear() {
         clearSilently();
         fire();
     }
+    //prajw: end
 
     public boolean isElementSelected(String id) {
         return selectedElements.contains(id);
@@ -64,6 +73,8 @@ public class SelectionManager {
     }
 
     public void selectElementsAndWires(Collection<String> elementIds, Collection<String> wireIds, boolean additive) {
+        //prajw : start
+        // Rubber-band selection replaces prior items unless Shift or Control asks to add to them.
         if (!additive) {
             selectedElements.clear();
             selectedWires.clear();
@@ -71,6 +82,7 @@ public class SelectionManager {
         selectedElements.addAll(elementIds);
         selectedWires.addAll(wireIds);
         fire();
+        //prajw: end
     }
 
     private void clearSilently() {
