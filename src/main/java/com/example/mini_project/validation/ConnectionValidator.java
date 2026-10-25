@@ -18,7 +18,7 @@ public class ConnectionValidator {
         drivers.addAll(findDrivers(start, graph));
         drivers.addAll(findDrivers(end, graph));
         if (drivers.size() > 1) {
-            return "Multiple output ports are driving " + "the same wire network (" + drivers.size() + " sources).";
+            return "Multiple output ports are driving the same wire network (" + drivers.size() + " sources).";
         }
         return null;
     }
@@ -120,9 +120,7 @@ public class ConnectionValidator {
                 if (!(source instanceof Gate)) continue;
                 for (CircuitElement destination : destinations) {
                     if (!(destination instanceof Gate)) continue;
-                    gateGraph.computeIfAbsent(
-                            source, k -> new HashSet<>()
-                    ).add(destination);
+                    gateGraph.computeIfAbsent(source, k -> new HashSet<>()).add(destination);
                 }
             }
         }

@@ -171,8 +171,9 @@ public class EditorController {
         boolean ioValid = validator.validateInputsAndOutputs(targetCircuit);
         boolean logicValid = validator.validateDeadLogic(targetCircuit);
         boolean referencesValid = validator.validateWireReferences(targetCircuit);
-        if (!(wiresValid && inputsValid && ioValid && logicValid && referencesValid)) {
-            throw new IllegalStateException("Circuit validation failed. See console for details.");
+        boolean connectionsValid = validator.validateWireDrivers(targetCircuit);
+        if (!(wiresValid && inputsValid && ioValid && logicValid && referencesValid && connectionsValid)) {
+            throw new IllegalStateException("Circuit validation failed");
         }
         isValidated = true;
         return new CircuitTopology().sort(targetCircuit);
@@ -217,7 +218,7 @@ public class EditorController {
                 System.out.println(element.getId());
             }
         } catch (IllegalStateException ex) {
-            System.err.println("Circuit validation failed: " + ex.getMessage());
+            System.err.println(ex.getMessage());
         }
     }
 
@@ -248,7 +249,7 @@ public class EditorController {
                 }
                 if (isOverlapping(moving, position[0], position[1], other, otherX, otherY)) {
                     LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
-                    System.err.println(time + " - Movement failed: Components cannot overlap.");
+                    System.err.println(time + " - Move failed: Components cannot overlap.");
                     return;
                 }
             }
@@ -450,7 +451,7 @@ public class EditorController {
         }
         if (targetPort == null && targetNode == null && targetSegment == null) {
             LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
-            System.err.println(time + " - CONNECTION REJECTED: Wire cannot end in empty space");
+            System.err.println(time + " - Connection Rejected: Wire cannot end without a node/port.");
             dragStartPort = null;
             dragStartNode = null;
             dragStartSegment = null;
@@ -477,7 +478,7 @@ public class EditorController {
         }
         if (error != null) {
             LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
-            System.err.println(time + " - CONNECTION REJECTED: " + error);
+            System.err.println(time + " - Connection Rejected: " + error);
             dragStartPort = null;
             dragStartNode = null;
             dragStartSegment = null;
