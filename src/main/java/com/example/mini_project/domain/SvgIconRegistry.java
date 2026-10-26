@@ -30,36 +30,8 @@ public class SvgIconRegistry {
 
     // Switch + LED render in a 64 px box over a 512-unit viewBox = exactly 0.125 px per unit,
     // so whole-unit shifts below map to whole-pixel (and grid-multiple) port offsets.
-    private static final double SWITCH_WIDTH = 64;
+    private static final double SWITCH_WIDTH = 80;
     private static final double LED_WIDTH    = 64;
-
-    // ── viewBox sizes of the source artwork (all square) ──────────────────────
-    private static final double GATE_VIEWBOX   = 512;
-    private static final double SWITCH_VIEWBOX = 512;
-    private static final double LED_VIEWBOX    = 512;
-
-    // pixels per viewBox unit
-    private static final double GATE_SCALE   = GATE_WIDTH   / GATE_VIEWBOX;    // 128 / 512 = 0.25
-    private static final double SWITCH_SCALE = SWITCH_WIDTH / SWITCH_VIEWBOX;  // 64 / 512 = 0.125
-    private static final double LED_SCALE    = LED_WIDTH    / LED_VIEWBOX;     // 64 / 512 = 0.125
-
-    // ── Gate port positions, in viewBox units ─────────────────────────────────
-    // Measured from the artwork: every gate draws its wires as 12-unit strokes with round caps.
-    // A port sits on the wire's centre line, at the wire's path endpoint (the round cap adds
-    // another 6 units / ~1 px beyond it, so the connecting line overlaps the cap, no gap).
-    //
-    //   input 0 wire : "M16 174 ..."  -> port (16, 174)
-    //   input 1 wire : "M16 338 ..."  -> port (16, 338)
-    //   NOT input    : "M16 256 ..."  -> port (16, 256)
-    //   output wire  : "... 496 256"  -> port (496, 256)
-    //
-    // AND / OR / XOR / NAND / NOR share identical wire positions (inputs are +-82 either
-    // side of the centre line y = 256).
-    private static final double GATE_IN_X   = 16;
-    private static final double GATE_OUT_X  = 496;
-    private static final double GATE_IN0_Y  = 174;
-    private static final double GATE_IN1_Y  = 338;
-    private static final double GATE_MID_Y  = 256;
 
     // ── Switch / LED connection points, in viewBox units ──────────────────────
     // The canvas puts the icon origin on a 10 px grid dot and a port's position is
@@ -72,10 +44,7 @@ public class SvgIconRegistry {
     //   LED input     : bottom end of the long (anode) lead, path end (210, 491).
     //
     //   shifted units * 0.125 px  ->  switch out = (50, 30) px,  LED in = (30, 60) px
-    private static final double SWITCH_OUT_X = 408, SWITCH_OUT_Y = 256;
-    private static final double SWITCH_SHIFT_X = -8,  SWITCH_SHIFT_Y = -16;
-
-    private static final double LED_IN_X = 210, LED_IN_Y = 491;
+    private static final double SWITCH_SHIFT_X = -24,  SWITCH_SHIFT_Y = 0;
     private static final double LED_SHIFT_X = 30,  LED_SHIFT_Y = -11;
 
     // ── SVG source strings ────────────────────────────────────────────────────
@@ -486,7 +455,7 @@ public class SvgIconRegistry {
             );
             // SWITCH: output on the right edge of the body, on the centre line -> (50, 30) px
             case SWITCH -> List.of(
-                    new PortSpec("out", PortType.OUTPUT, 50.0, 30.0)
+                    new PortSpec("out", PortType.OUTPUT, 60.0, 40.0)
             );
             // LED: input on the tip of the long (anode) lead -> (30, 60) px
             case LED -> List.of(
