@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,6 +42,9 @@ public class EditorController {
     private boolean isValidated = false;
     //prajw : start
     private Consumer<List<String>> onValidationErrors;
+    private final Set<String> invalidElementIds = new HashSet<>();
+    private final Set<String> invalidWireIds = new HashSet<>();
+    // highlight validation errored elems
     //prajw: end
 
     private CircuitCanvas canvas;
@@ -72,6 +76,49 @@ public class EditorController {
     public void setOnValidationErrors(Consumer<List<String>> listener) {
         onValidationErrors = listener;
     }
+
+    public Set<String> getInvalidElementIds() {
+        return Set.copyOf(invalidElementIds);
+    }
+
+    public Set<String> getInvalidWireIds() {
+        return Set.copyOf(invalidWireIds);
+    }
+
+    public void clearInvalidHighlights() {
+        invalidElementIds.clear();
+        invalidWireIds.clear();
+        notifyRender();
+    }
+
+    //highlight validation errored elems
+    private void markInvalidIds(Collection<String> elementIds, Collection<String> wireIds) {
+        invalidElementIds.clear();
+        invalidWireIds.clear();
+        invalidElementIds.addAll(elementIds);
+        invalidWireIds.addAll(wireIds);
+        notifyRender();
+    }
+
+    //highlight validation errored elems
+    private void markInvalidObjects(Object... targets) {
+        invalidElementIds.clear();
+        invalidWireIds.clear();
+        for (Object target : targets) {
+            if (target instanceof Port port) {
+                invalidElementIds.add(port.getOwner().getId());
+            } else if (target instanceof CircuitElement element) {
+                invalidElementIds.add(element.getId());
+            } else if (target instanceof WireSegment wire) {
+                invalidWireIds.add(wire.getId());
+            } else if (target instanceof PointNode node) {
+                for (WireSegment wire : node.getConnectedSegments()) {
+                    invalidWireIds.add(wire.getId());
+                }
+            }
+        }
+        notifyRender();
+    }
     //prajw: end
 
     // Used for deletion of entire circuit
@@ -82,6 +129,7 @@ public class EditorController {
         PointNode.resetId();
         WireSegment.resetId();
         drawingWire = false;
+        clearInvalidHighlights();
         dragStartPort = null;
         dragStartNode = null;
         dragStartSegment = null;
@@ -175,16 +223,21 @@ public class EditorController {
         if (!(wiresValid && inputsValid && ioValid && logicValid && referencesValid)) {
             //prajw : start
             List<String> errors = validator.getErrors();
+            markInvalidIds(validator.getInvalidElementIds(), validator.getInvalidWireIds());
             publishValidationErrors(errors);
             throw new IllegalStateException(String.join(System.lineSeparator(), errors));
             //prajw: end
         }
         isValidated = true;
+        clearInvalidHighlights();
         //prajw : start
+        CircuitTopology topology = new CircuitTopology();
         try {
-            return new CircuitTopology().sort(circuit);
+            return topology.sort(circuit);
         } catch (IllegalStateException ex) {
-            publishValidationErrors(List.of(ex.getMessage()));
+            List<String> errors = List.of(ex.getMessage());
+            markInvalidIds(topology.getInvalidElementIds(), topology.getInvalidWireIds());
+            publishValidationErrors(errors);
             throw ex;
         }
         //prajw: end
@@ -200,7 +253,8 @@ public class EditorController {
 
     //prajw : start
     /** Publishes one non-validation error, such as a rejected wire connection. */
-    private void publishError(String error) {
+    private void publishError(String error, Object... targets) {
+        markInvalidObjects(targets);
         publishValidationErrors(List.of(error));
     }
     //prajw: end
@@ -450,6 +504,8 @@ public class EditorController {
             dragStartSegment = null;
             return;
         }
+        Object start = dragStartPort != null ? dragStartPort
+                : dragStartNode != null ? dragStartNode : dragStartSegment;
         // Identify what the user is trying to connect.
         Port targetPort = findPortAt(mouseX, mouseY);
         PointNode targetNode = null;
@@ -464,14 +520,13 @@ public class EditorController {
             //prajw : start
             String error = "CONNECTION REJECTED: Wire cannot end in empty space";
             System.err.println(error);
-            publishError(error);
+            publishError(error, start);
             //prajw: end
             dragStartPort = null;
             dragStartNode = null;
             dragStartSegment = null;
             return;
         }
-        Object start = dragStartPort != null ? dragStartPort : dragStartNode != null ? dragStartNode : dragStartSegment;
         Object end = targetPort != null ? targetPort : targetNode != null ? targetNode : targetSegment;
 
         // Validate before modifying the circuit.
@@ -494,7 +549,7 @@ public class EditorController {
             //prajw : start
             String message = "CONNECTION REJECTED: " + error;
             System.err.println(message);
-            publishError(message);
+            publishError(message, start, end);
             //prajw: end
             dragStartPort = null;
             dragStartNode = null;

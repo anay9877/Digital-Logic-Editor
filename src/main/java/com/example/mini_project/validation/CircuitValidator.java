@@ -5,15 +5,53 @@ import java.util.*;
 public class CircuitValidator {
     //prajw : start
     private final List<String> errors = new ArrayList<>();
+    private final Set<String> invalidElementIds = new HashSet<>();
+    private final Set<String> invalidWireIds = new HashSet<>();
 
     /** Returns a snapshot of every validation error found by this validator. */
     public List<String> getErrors() {
         return List.copyOf(errors);
     }
 
+    public Set<String> getInvalidElementIds() {
+        return Set.copyOf(invalidElementIds);
+    }
+
+    public Set<String> getInvalidWireIds() {
+        return Set.copyOf(invalidWireIds);
+    }
+
     // Centralizes validation messages so the editor can display them together.
-    private void reportError(String message) {
+    //highlight validation errored elems
+    private void reportError(String message, Object... targets) {
         errors.add(message);
+        for (Object target : targets) {
+            if (target instanceof Port port) {
+                invalidElementIds.add(port.getOwner().getId());
+            } else if (target instanceof CircuitElement element) {
+                invalidElementIds.add(element.getId());
+            } else if (target instanceof WireSegment wire) {
+                invalidWireIds.add(wire.getId());
+            } else if (target instanceof PointNode node) {
+                for (WireSegment wire : node.getConnectedSegments()) {
+                    invalidWireIds.add(wire.getId());
+                }
+            }
+        }
+    }
+
+    private void reportSubCircuitError(String message, SubCircuit subCircuit) {
+        reportError(message);
+        invalidElementIds.addAll(subCircuit.getgates().keySet());
+        for (InputElement input : subCircuit.getInputs()) {
+            invalidElementIds.add(input.getId());
+        }
+        for (OutputElement output : subCircuit.getOutputs()) {
+            invalidElementIds.add(output.getId());
+        }
+        for (WireSegment wire : subCircuit.getWireSegments()) {
+            invalidWireIds.add(wire.getId());
+        }
     }
     //prajw: end
 
@@ -25,7 +63,7 @@ public class CircuitValidator {
                 if (node == null ||
                     countConnections(circuit, node) < 2) {
                     //prajw : start
-                    reportError("VALIDATION ERROR: Wire " + wire.getId() + " has a dangling start.");
+                    reportError("VALIDATION ERROR: Wire " + wire.getId() + " has a dangling start.", wire);
                     //prajw: end
                     valid = false;
                 }
@@ -35,7 +73,7 @@ public class CircuitValidator {
                 if (node == null ||
                     countConnections(circuit, node) < 2) {
                     //prajw : start
-                    reportError("VALIDATION ERROR: Wire " + wire.getId() + " has a dangling end.");
+                    reportError("VALIDATION ERROR: Wire " + wire.getId() + " has a dangling end.", wire);
                     //prajw: end
                     valid = false;
                 }
@@ -62,7 +100,7 @@ public class CircuitValidator {
                 for (Port port : gate.getInputPorts()) {
                     if (!isPortConnected(circuit, port)) {
                         //prajw : start
-                        reportError("VALIDATION ERROR: Gate " + gate.getId() + " has an unconnected input: " + port.getId());
+                        reportError("VALIDATION ERROR: Gate " + gate.getId() + " has an unconnected input: " + port.getId(), gate);
                         //prajw: end
                         valid = false;
                     }
@@ -71,7 +109,7 @@ public class CircuitValidator {
                 Port port = led.getInputPort();
                 if (!isPortConnected(circuit, port)) {
                     //prajw : start
-                    reportError("VALIDATION ERROR: LED " + led.getId() + " has an unconnected input");
+                    reportError("VALIDATION ERROR: LED " + led.getId() + " has an unconnected input", led);
                     //prajw: end
                     valid = false;
                 }
@@ -98,13 +136,13 @@ public class CircuitValidator {
         for (SubCircuit subCircuit : circuit.splitIntoDisjointSubCircuits()) {
             if (subCircuit.getInputs().isEmpty()) {
                 //prajw : start
-                reportError("VALIDATION ERROR: " + subCircuit.getId() + " has no input switch.");
+                reportSubCircuitError("VALIDATION ERROR: " + subCircuit.getId() + " has no input switch.", subCircuit);
                 //prajw: end
                 valid = false;
             }
             if (subCircuit.getOutputs().isEmpty()) {
                 //prajw : start
-                reportError("VALIDATION ERROR: " + subCircuit.getId() + " has no output LED.");
+                reportSubCircuitError("VALIDATION ERROR: " + subCircuit.getId() + " has no output LED.", subCircuit);
                 //prajw: end
                 valid = false;
             }
@@ -172,7 +210,7 @@ public class CircuitValidator {
         for (CircuitElement element : circuit.getElements().values()) {
             if ((element instanceof Gate || element instanceof InputElement) && !useful.contains(element)) {
                 //prajw : start
-                reportError("VALIDATION ERROR: " + element.getId() + " does not contribute to any LED.");
+                reportError("VALIDATION ERROR: " + element.getId() + " does not contribute to any LED.", element);
                 //prajw: end
                 valid = false;
             }
@@ -189,7 +227,7 @@ public class CircuitValidator {
             if (startNode != null) {
                 if (!nodes.contains(startNode) || !startNode.getConnectedSegments().contains(wire)) {
                     //prajw : start
-                    reportError("VALIDATION ERROR: Wire " + wire.getId() + " has an invalid start node.");
+                    reportError("VALIDATION ERROR: Wire " + wire.getId() + " has an invalid start node.", wire);
                     //prajw: end
                     valid = false;
                 }
@@ -197,7 +235,7 @@ public class CircuitValidator {
             if (endNode != null) {
                 if (!nodes.contains(endNode) || !endNode.getConnectedSegments().contains(wire)) {
                     //prajw : start
-                    reportError("VALIDATION ERROR: Wire " + wire.getId() + " has an invalid end node.");
+                    reportError("VALIDATION ERROR: Wire " + wire.getId() + " has an invalid end node.", wire);
                     //prajw: end
                     valid = false;
                 }
@@ -205,13 +243,15 @@ public class CircuitValidator {
             if (wire.getStartPort() != null &&
                 circuit.getElement(wire.getStartPort().getOwner().getId()) != wire.getStartPort().getOwner()) {
                 //prajw : start
-                reportError("VALIDATION ERROR: Wire " + wire.getId() + " references a removed start component.");
+                reportError("VALIDATION ERROR: Wire " + wire.getId() + " references a removed start component.",
+                        wire, wire.getStartPort());
                 //prajw: end
                 valid = false;
             }
             if (wire.getEndPort() != null && circuit.getElement(wire.getEndPort().getOwner().getId()) != wire.getEndPort().getOwner()) {
                 //prajw : start
-                reportError("VALIDATION ERROR: Wire " + wire.getId() + " references a removed end component.");
+                reportError("VALIDATION ERROR: Wire " + wire.getId() + " references a removed end component.",
+                        wire, wire.getEndPort());
                 //prajw: end
                 valid = false;
             }
@@ -225,21 +265,21 @@ public class CircuitValidator {
             }
             if (actualConnections != node.getConnectedSegments().size()) {
                 //prajw : start
-                reportError("VALIDATION ERROR: Node " + node.getId() + " has inconsistent wire connections.");
+                reportError("VALIDATION ERROR: Node " + node.getId() + " has inconsistent wire connections.", node);
                 //prajw: end
                 valid = false;
             }
             for (WireSegment wire : node.getConnectedSegments()) {
                 if (!wires.contains(wire) || (wire.getStartNode() != node && wire.getEndNode() != node)) {
                     //prajw : start
-                    reportError("VALIDATION ERROR: Node " + node.getId() + " references an invalid wire.");
+                    reportError("VALIDATION ERROR: Node " + node.getId() + " references an invalid wire.", node, wire);
                     //prajw: end
                     valid = false;
                 }
             }
             if (node.isJunction() != (actualConnections >= 3)) {
                 //prajw : start
-                reportError("VALIDATION ERROR: Node " + node.getId() + " has incorrect junction status.");
+                reportError("VALIDATION ERROR: Node " + node.getId() + " has incorrect junction status.", node);
                 //prajw: end
                 valid = false;
             }

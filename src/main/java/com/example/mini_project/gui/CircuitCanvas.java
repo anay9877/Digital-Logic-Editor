@@ -16,6 +16,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Polyline;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.effect.InnerShadow;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -84,6 +85,7 @@ public class CircuitCanvas extends Pane {
 
     private List<Node> wireNodes = new ArrayList<>();
     private List<Node> junctionNodes = new ArrayList<>();
+    private static final Color COLOR_ERROR = Color.web("#ff2b2b");
 
     public CircuitCanvas(EditorController controller) {
         this.controller = controller;
@@ -372,6 +374,9 @@ public class CircuitCanvas extends Pane {
 
             if (controller.getSelection().isWireSelected(seg.getId())) {
                 wire.setEffect(new DropShadow(15, Color.CYAN));
+            } else if (controller.getInvalidWireIds().contains(seg.getId())) {
+                //highlight validation errored elems
+                wire.setEffect(new DropShadow(12, COLOR_ERROR));
             }
 
             Color wireColor = switch (seg.getState()) {
@@ -379,6 +384,10 @@ public class CircuitCanvas extends Pane {
                 case OFF -> Color.web("#404040");   // dark gray: inactive
                 case UNKNOWN -> Color.web("#000000");   // black: unknown / undriven
             };
+            if (controller.getInvalidWireIds().contains(seg.getId())) {
+                //highlight validation errored elems
+                wireColor = COLOR_ERROR;
+            }
             wire.setStroke(wireColor);
             wire.setStrokeWidth(WIRE_WIDTH);
             wire.setFill(Color.TRANSPARENT);
@@ -414,6 +423,9 @@ public class CircuitCanvas extends Pane {
 
             if (controller.getSelection().isElementSelected(elem.getId())) {
                 icon.setEffect(new DropShadow(15, Color.CYAN));
+            } else if (controller.getInvalidElementIds().contains(elem.getId())) {
+                //highlight validation errored elems
+                icon.setEffect(new DropShadow(12, COLOR_ERROR));
             }
 
             icon.setOnMousePressed(ev -> {
@@ -508,6 +520,11 @@ public class CircuitCanvas extends Pane {
                 dot.setStroke(Color.BLACK);
                 dot.setStrokeWidth(0.5);
                 dot.setUserData(elem.getId());
+                if (controller.getInvalidElementIds().contains(elem.getId())) {
+                    //highlight validation errored elems
+                    dot.setFill(COLOR_ERROR);
+                    dot.setStroke(Color.RED);
+                }
 
                 dot.setOnMouseEntered(e -> {
                     dot.setFill(COLOR_PORT_HOVER);
