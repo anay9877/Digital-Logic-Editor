@@ -385,10 +385,10 @@ public class EditorController {
     }
 
     // Wire drawing — called by CircuitCanvas mouse handlers
-    private static final double PORT_HIT_RADIUS = CircuitCanvas.GRID_SIZE * 1.5;  // 15px
-    private static final double NODE_HIT_RADIUS = CircuitCanvas.GRID_SIZE * 1.5;  // 15px
-    private static final double WIRE_HIT_THRESHOLD = CircuitCanvas.GRID_SIZE * 0.6;  // 6px
-    private static final double DIRECTION_LOCK_DIST = CircuitCanvas.GRID_SIZE;        // 10px
+    private static final double PORT_HIT_RADIUS = 8.0;
+    private static final double NODE_HIT_RADIUS = 8.0;
+    private static final double WIRE_HIT_THRESHOLD = 8.0;
+    private static final double DIRECTION_LOCK_DIST = CircuitCanvas.GRID_SIZE;
     private static final double WIRE_SELECT_THRESHOLD = 8.0;
 
     public void onWireMousePressed(double x, double y) {

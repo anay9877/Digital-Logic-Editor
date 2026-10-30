@@ -20,12 +20,6 @@ public class Port {
         this.owner = owner;
     }
 
-    public Port(String id, PortType type, CircuitElement owner, double relX, double relY) {
-        this(id, type, owner);
-        this.relX = relX;
-        this.relY = relY;
-    }
-
     public String getId() {
         return id;
     }
@@ -45,20 +39,6 @@ public class Port {
 
     public void setValue(SignalState value) {
         this.value = value;
-    }
-
-    // Signal propagation
-    public void propagate() {
-        // Pushes this port's current value onto connected wire segments (handled by simulation engine)
-    }
-
-    // Pixel offset from the owner's top-left corner.
-    public double getRelX() {
-        return relX;
-    }
-
-    public double getRelY() {
-        return relY;
     }
 
     public void setRelOffset(double relX, double relY) {

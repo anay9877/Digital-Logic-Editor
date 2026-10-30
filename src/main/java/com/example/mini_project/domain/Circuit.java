@@ -72,7 +72,6 @@ public class Circuit {
             WireSegment s = queue.poll();
             for (PointNode n : new PointNode[]{s.getStartNode(), s.getEndNode()}) {
                 if (n == null) continue;                       // that end is a Port, so the search stops there
-                // if (n.isJunction()) continue;               // optional: see "Choice to confirm" below
                 for (WireSegment next : n.getConnectedSegments()) {
                     if (doomed.add(next)) queue.add(next);     // add() is false if already visited
                 }

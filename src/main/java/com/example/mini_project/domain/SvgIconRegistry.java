@@ -40,7 +40,7 @@ public class SvgIconRegistry {
 
     // pixels per viewBox unit
     private static final double GATE_SCALE   = GATE_WIDTH   / GATE_VIEWBOX;    // 128 / 512 = 0.25
-    private static final double SWITCH_SCALE = SWITCH_WIDTH / SWITCH_VIEWBOX;  // 80 / 512 = 0.15625
+    private static final double SWITCH_SCALE = SWITCH_WIDTH / SWITCH_VIEWBOX;  // 64 / 512 = 0.125
     private static final double LED_SCALE    = LED_WIDTH    / LED_VIEWBOX;     // 64 / 512 = 0.125
 
     // ── Gate port positions, in viewBox units ─────────────────────────────────
