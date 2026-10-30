@@ -66,15 +66,14 @@ public class SvgIconRegistry {
     // Shift the switch artwork so its body-edge connection point lands on that same grid.
     //
     //   SWITCH output : right outer edge of the body (x = 408), on the centre line y = 256.
-    //   LED input     : bottom end of the long (anode) lead, path end (210, 491).
+    //   LED centerline: x = 32 in the 64-unit SVG viewBox.
     //
     //   shifted units * 0.15625 px -> switch out = (60, 40) px
-    //   LED remains 64 px -> input = (30, 60) px
+    //   Shift the LED centerline to x = 60 px so its input aligns to the canvas grid.
     private static final double SWITCH_OUT_X = 408, SWITCH_OUT_Y = 256;
     private static final double SWITCH_SHIFT_X = -24, SWITCH_SHIFT_Y = 0;
 
-    private static final double LED_IN_X = 210, LED_IN_Y = 491;
-    private static final double LED_SHIFT_X = 30,  LED_SHIFT_Y = -11;
+    private static final double LED_SHIFT_X = 28, LED_SHIFT_Y = -11;
 
     // ── SVG source strings ────────────────────────────────────────────────────
 
@@ -488,9 +487,9 @@ public class SvgIconRegistry {
                             (SWITCH_OUT_X + SWITCH_SHIFT_X) * SWITCH_SCALE,
                             (SWITCH_OUT_Y + SWITCH_SHIFT_Y) * SWITCH_SCALE)
             );
-            // LED: input on the tip of the long (anode) lead -> (30, 60) px
+            // LED input shares the bulb centerline and sits on the 20 px canvas grid.
             case LED -> List.of(
-                    new PortSpec("in0", PortType.INPUT, 61.5, 60.0)
+                    new PortSpec("in0", PortType.INPUT, 60.0, 60.0)
             );
             default -> List.of();
         };
