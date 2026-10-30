@@ -267,6 +267,7 @@ public class CircuitCanvas extends Pane {
         toolbar.setOnDelete(controller::deleteSelected); //deletion
         toolbar.setOnValidate(() -> controller.optionSelected(ToolbarOptions.Validate));
         toolbar.setOnSimulate(controller::runSimulation);
+        toolbar.setOnTruthTable(controller::showTruthTable);
         toolbar.setOnUndo(controller::undo); //prajwal undo redo
         toolbar.setOnRedo(controller::redo);
         controller.getHistory().setOnChange(() -> toolbar.setHistoryState(
