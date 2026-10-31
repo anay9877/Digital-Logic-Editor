@@ -1,8 +1,10 @@
 package com.example.mini_project.gui;
 
 public enum ToolbarOptions {
+    //prajw : start
+    // Selection is the default canvas interaction; panning remains available with the secondary mouse button.
     Select,
-    Hand,
+    //prajw: end
     Delete,
     Undo,
     Redo,

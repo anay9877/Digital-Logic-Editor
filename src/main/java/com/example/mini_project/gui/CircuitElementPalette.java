@@ -14,8 +14,8 @@ import java.util.Map;
 
 public class CircuitElementPalette extends VBox {
     private static final double ICON_SIZE = 48;
-    private static final String STYLE_SELECTED = "-fx-border-color: #1A73E8; -fx-border-width: 2; -fx-background-color: #E8F0FE;";
-
+    private static final String STYLE_SELECTED = "-fx-border-color: #1A73E8; -fx-border-width: 1; -fx-background-color: #E8F0FE;";
+    private static final String STYLE_NORMAL = "-fx-border-color: #C9C9C9; -fx-border-width: 1; -fx-background-color: transparent;";
     private final SvgIconRegistry iconRegistry = new SvgIconRegistry();
     private final Map<ComponentType, Button> buttons = new EnumMap<>(ComponentType.class);
     private ComponentType selected;
@@ -26,6 +26,7 @@ public class CircuitElementPalette extends VBox {
             if (t == ComponentType.UNKNOWN) continue;
 
             Button b = new Button();
+            b.setStyle(STYLE_NORMAL); // when creating each button
             b.setGraphic(iconRegistry.createPaletteIcon(t, ICON_SIZE));
             b.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
             b.setTooltip(new Tooltip(t.name()));          // name still available on hover
@@ -43,7 +44,7 @@ public class CircuitElementPalette extends VBox {
 
     public void selectComponentType(ComponentType type) {
         this.selected = type;
-        buttons.forEach((t, b) -> b.setStyle(t == selected ? STYLE_SELECTED : ""));
+        buttons.forEach((t, b) -> b.setStyle(t == selected ? STYLE_SELECTED : STYLE_NORMAL));
     }
 
     public ComponentType getSelected() { return selected; }

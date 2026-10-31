@@ -11,9 +11,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class EditorController {
 
@@ -38,6 +40,12 @@ public class EditorController {
     private CircuitSimulator simulator;
     private boolean simulating = false;
     private boolean isValidated = false;
+    //prajw : start
+    private Consumer<List<String>> onValidationErrors;
+    private final Set<String> invalidElementIds = new HashSet<>();
+    private final Set<String> invalidWireIds = new HashSet<>();
+    // highlight validation errored elems
+    //prajw: end
 
     private CircuitCanvas canvas;
 
@@ -63,6 +71,56 @@ public class EditorController {
         return canvas;
     }
 
+    //prajw : start
+    /** Sets the UI callback that receives a batch of validation errors. */
+    public void setOnValidationErrors(Consumer<List<String>> listener) {
+        onValidationErrors = listener;
+    }
+
+    public Set<String> getInvalidElementIds() {
+        return Set.copyOf(invalidElementIds);
+    }
+
+    public Set<String> getInvalidWireIds() {
+        return Set.copyOf(invalidWireIds);
+    }
+
+    public void clearInvalidHighlights() {
+        invalidElementIds.clear();
+        invalidWireIds.clear();
+        notifyRender();
+    }
+
+    //highlight validation errored elems
+    private void markInvalidIds(Collection<String> elementIds, Collection<String> wireIds) {
+        invalidElementIds.clear();
+        invalidWireIds.clear();
+        invalidElementIds.addAll(elementIds);
+        invalidWireIds.addAll(wireIds);
+        notifyRender();
+    }
+
+    //highlight validation errored elems
+    private void markInvalidObjects(Object... targets) {
+        invalidElementIds.clear();
+        invalidWireIds.clear();
+        for (Object target : targets) {
+            if (target instanceof Port port) {
+                invalidElementIds.add(port.getOwner().getId());
+            } else if (target instanceof CircuitElement element) {
+                invalidElementIds.add(element.getId());
+            } else if (target instanceof WireSegment wire) {
+                invalidWireIds.add(wire.getId());
+            } else if (target instanceof PointNode node) {
+                for (WireSegment wire : node.getConnectedSegments()) {
+                    invalidWireIds.add(wire.getId());
+                }
+            }
+        }
+        notifyRender();
+    }
+    //prajw: end
+
     // Used for deletion of entire circuit
     public void newCircuit() {
         circuit.clear();
@@ -71,6 +129,7 @@ public class EditorController {
         PointNode.resetId();
         WireSegment.resetId();
         drawingWire = false;
+        clearInvalidHighlights();
         dragStartPort = null;
         dragStartNode = null;
         dragStartSegment = null;
@@ -109,7 +168,10 @@ public class EditorController {
     // Tells which option is selected from toolbar(implemented just for select and delete)
     public void optionSelected(ToolbarOptions option) {
         switch (option) {
-            case Select, Hand -> selection.clear();
+            //prajw : start
+            // Explicitly choosing Select clears the old highlight; ordinary clicks keep the current selection.
+            case Select -> selection.clear();
+            //prajw: end
             case Delete -> handleDelete();
             case Validate -> handleValidate();
             case Simulate -> runSimulation();
@@ -159,13 +221,43 @@ public class EditorController {
         boolean logicValid = validator.validateDeadLogic(circuit);
         boolean referencesValid = validator.validateWireReferences(circuit);
         if (!(wiresValid && inputsValid && ioValid && logicValid && referencesValid)) {
-            throw new IllegalStateException(
-                    "Circuit validation failed. See console for details."
-            );
+            //prajw : start
+            List<String> errors = validator.getErrors();
+            markInvalidIds(validator.getInvalidElementIds(), validator.getInvalidWireIds());
+            publishValidationErrors(errors);
+            throw new IllegalStateException(String.join(System.lineSeparator(), errors));
+            //prajw: end
         }
         isValidated = true;
-        return new CircuitTopology().sort(circuit);
+        clearInvalidHighlights();
+        //prajw : start
+        CircuitTopology topology = new CircuitTopology();
+        try {
+            return topology.sort(circuit);
+        } catch (IllegalStateException ex) {
+            List<String> errors = List.of(ex.getMessage());
+            markInvalidIds(topology.getInvalidElementIds(), topology.getInvalidWireIds());
+            publishValidationErrors(errors);
+            throw ex;
+        }
+        //prajw: end
     }
+
+    //prajw : start
+    private void publishValidationErrors(List<String> errors) {
+        if (onValidationErrors != null && !errors.isEmpty()) {
+            onValidationErrors.accept(List.copyOf(errors));
+        }
+    }
+    //prajw: end
+
+    //prajw : start
+    /** Publishes one non-validation error, such as a rejected wire connection. */
+    private void publishError(String error, Object... targets) {
+        markInvalidObjects(targets);
+        publishValidationErrors(List.of(error));
+    }
+    //prajw: end
 
     public void runSimulation() {
         try {
@@ -299,10 +391,10 @@ public class EditorController {
     }
 
     // Wire drawing — called by CircuitCanvas mouse handlers
-    private static final double PORT_HIT_RADIUS = CircuitCanvas.GRID_SIZE * 1.5;  // 15px
-    private static final double NODE_HIT_RADIUS = CircuitCanvas.GRID_SIZE * 1.5;  // 15px
-    private static final double WIRE_HIT_THRESHOLD = CircuitCanvas.GRID_SIZE * 0.6;  // 6px
-    private static final double DIRECTION_LOCK_DIST = CircuitCanvas.GRID_SIZE;        // 10px
+    private static final double PORT_HIT_RADIUS = 8.0;
+    private static final double NODE_HIT_RADIUS = 8.0;
+    private static final double WIRE_HIT_THRESHOLD = 8.0;
+    private static final double DIRECTION_LOCK_DIST = CircuitCanvas.GRID_SIZE;
     private static final double WIRE_SELECT_THRESHOLD = 8.0;
 
     public void onWireMousePressed(double x, double y) {
@@ -418,6 +510,8 @@ public class EditorController {
             dragStartSegment = null;
             return;
         }
+        Object start = dragStartPort != null ? dragStartPort
+                : dragStartNode != null ? dragStartNode : dragStartSegment;
         // Identify what the user is trying to connect.
         Port targetPort = findPortAt(mouseX, mouseY);
         PointNode targetNode = null;
@@ -429,13 +523,16 @@ public class EditorController {
             targetSegment = findWireSegmentAt(mouseX, mouseY);
         }
         if (targetPort == null && targetNode == null && targetSegment == null) {
-            System.err.println("CONNECTION REJECTED: Wire cannot end in empty space");
+            //prajw : start
+            String error = "CONNECTION REJECTED: Wire cannot end in empty space";
+            System.err.println(error);
+            publishError(error, start);
+            //prajw: end
             dragStartPort = null;
             dragStartNode = null;
             dragStartSegment = null;
             return;
         }
-        Object start = dragStartPort != null ? dragStartPort : dragStartNode != null ? dragStartNode : dragStartSegment;
         Object end = targetPort != null ? targetPort : targetNode != null ? targetNode : targetSegment;
 
         // Validate before modifying the circuit.
@@ -455,7 +552,11 @@ public class EditorController {
             error = connectionValidator.checkDuplicateConnection(circuit, start, end);
         }
         if (error != null) {
-            System.err.println("CONNECTION REJECTED: " + error);
+            //prajw : start
+            String message = "CONNECTION REJECTED: " + error;
+            System.err.println(message);
+            publishError(message, start, end);
+            //prajw: end
             dragStartPort = null;
             dragStartNode = null;
             dragStartSegment = null;
@@ -524,6 +625,8 @@ public class EditorController {
     }
 
     public void onSelectPoint(double x, double y, boolean additive, boolean wholeWire) {
+        //prajw : start
+        // A hit changes the selected wire; an empty click clears selection only when it is not additive.
         WireSegment hit = findNearestWire(x, y);
         if (hit == null) {
             if (!additive) {
@@ -540,6 +643,7 @@ public class EditorController {
         } else {
             selection.selectWire(hit.getId(), additive);
         }
+        //prajw: end
     }
 
     public WireSegment findNearestWire(double x, double y) {
