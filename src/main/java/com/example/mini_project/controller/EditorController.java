@@ -3,8 +3,16 @@ package com.example.mini_project.controller;
 import com.example.mini_project.domain.*;
 import com.example.mini_project.gui.CircuitCanvas;
 import com.example.mini_project.gui.ToolbarOptions;
+import com.example.mini_project.gui.TruthTableWindow;
 import com.example.mini_project.validation.*;
 import com.example.mini_project.persistence.CircuitSerializer;
+
+import javafx.animation.PauseTransition;
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.stage.Window;
+import javafx.util.Duration;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -14,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 
 public class EditorController {
 
@@ -186,12 +195,84 @@ public class EditorController {
             simulator = new CircuitSimulator(targetCircuit, order);
             simulating = true;
             printLedOutputs(order);
-            notifyRender();            // redraws LEDs: ON -> LED_ON_SVG, OFF -> LED_OFF_SVG
+            notifyRender();                      // no pause, no window
         } catch (IllegalStateException ex) {
             System.err.println("Cannot simulate: " + ex.getMessage());
             simulating = false;
             simulator = null;
         }
+    }
+
+    public void showTruthTable() {
+        if (canvas == null) return;
+
+        List<SubCircuitTable> tables = buildSubCircuitTables();
+        if (tables.isEmpty()) {
+            new Alert(Alert.AlertType.INFORMATION, "The canvas is empty.", ButtonType.OK).showAndWait();
+            return;
+        }
+
+        // keep the canvas live (switch toggles update LEDs) when the whole canvas is valid
+        try {
+            simulator = new CircuitSimulator(circuit, validateAndGetOrder(circuit));
+            simulating = true;
+        } catch (IllegalStateException ex) {
+            stopSimulation();      // some circuit is unfinished; press Simulate once it is complete
+        }
+        notifyRender();
+
+        Window owner = canvas.getScene() != null ? canvas.getScene().getWindow() : null;
+        TruthTableWindow.show(owner, tables, this::highlightSubCircuit);
+    }
+
+    /** One table per connected piece of the canvas, numbered top-left to bottom-right. */
+    private List<SubCircuitTable> buildSubCircuitTables() {
+        List<SubCircuit> subs = new ArrayList<>(circuit.splitIntoDisjointSubCircuits());
+        subs.sort(Comparator
+                .comparingDouble((SubCircuit s) -> elementsOf(s).stream().mapToDouble(CircuitElement::getY).min().orElse(0))
+                .thenComparingDouble(s -> elementsOf(s).stream().mapToDouble(CircuitElement::getX).min().orElse(0)));
+
+        List<SubCircuitTable> result = new ArrayList<>();
+        int n = 0;
+        for (SubCircuit sub : subs) {
+            n++;
+            Circuit part = circuitOf(sub);
+            List<String> elementIds = elementsOf(sub).stream().map(CircuitElement::getId).toList();
+            List<String> wireIds = sub.getWireSegments().stream().map(WireSegment::getId).toList();
+
+            TruthTableData data = null;
+            String error = null;
+            try {
+                data = TruthTableGenerator.generate(part, validateAndGetOrder(part));
+            } catch (IllegalStateException ex) {
+                error = ex.getMessage();
+            }
+            result.add(new SubCircuitTable("Circuit " + n, sub.getInputs().size(), sub.getOutputs().size(),
+                    elementIds, wireIds, data, error));
+        }
+        return result;
+    }
+
+    private static List<CircuitElement> elementsOf(SubCircuit sub) {
+        List<CircuitElement> all = new ArrayList<>(sub.getgates().values());
+        all.addAll(sub.getInputs());
+        all.addAll(sub.getOutputs());
+        return all;
+    }
+
+    private static Circuit circuitOf(SubCircuit sub) {
+        Circuit part = new Circuit();
+        elementsOf(sub).forEach(part::addElement);
+        sub.getPointNodes().forEach(part::addPointNode);
+        sub.getWireSegments().forEach(part::addWireSegment);
+        return part;
+    }
+
+    /** Called by the truth-table window: show which circuit is being viewed (empty lists = clear). */
+    private void highlightSubCircuit(List<String> elementIds, List<String> wireIds) {
+        selection.clear();
+        selection.selectElementsAndWires(elementIds, wireIds, true);
+        notifyRender();
     }
 
     private void printLedOutputs(List<CircuitElement> order) {

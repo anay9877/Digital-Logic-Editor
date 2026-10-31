@@ -74,6 +74,7 @@ public class EditorWindow extends Application {
         });
         stage.setScene(scene);
         stage.setTitle("Digital Logic Editor");
+        stage.setOnCloseRequest(e -> TruthTableWindow.closeIfOpen());
         stage.show();
     }
 
