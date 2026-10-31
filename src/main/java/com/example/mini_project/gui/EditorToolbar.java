@@ -14,15 +14,18 @@ public class EditorToolbar extends HBox {
     private Runnable onUserSelect;
     private Runnable onZoomIn;
     private Runnable onZoomOut;
-    //prajwal
+    private Runnable onHome;
+    // prajwal
     private Runnable onDelete;
-    //undo redo
+    // undo redo
     private Runnable onUndo;
     private Runnable onRedo;
     private Button undoButton;
     private Button redoButton;
+    private Runnable onValidate;
     private Runnable onSimulate;
     private Runnable onValidate;
+    private Runnable onTruthTable;
 
     public EditorToolbar(Circuit circuit) {
         this.circuit = circuit;
@@ -36,36 +39,57 @@ public class EditorToolbar extends HBox {
             }
             toolbarOptions.add(t);
             Button button = new Button(t.name());
-            if (t == ToolbarOptions.Undo) undoButton = button; //prajwal "undo"
-            if (t == ToolbarOptions.Redo) redoButton = button; //prajwal "redo"
+            if (t == ToolbarOptions.Undo)
+                undoButton = button; // prajwal "undo"
+            if (t == ToolbarOptions.Redo)
+                redoButton = button; // prajwal "redo"
             button.setOnAction(e -> {
                 if (t == ToolbarOptions.Zoom_In) {
-                    if(onZoomIn != null) {
+                    if (onZoomIn != null) {
                         onZoomIn.run();
                     }
                     return;
                 }
                 if (t == ToolbarOptions.Zoom_Out) {
-                    if(onZoomOut != null) {
+                    if (onZoomOut != null) {
                         onZoomOut.run();
                     }
                     return;
                 }
                 if (t == ToolbarOptions.Delete) {
-                    if (onDelete != null) onDelete.run();
-                    return;                       // keep the current tool and palette state
+                    if (onDelete != null)
+                        onDelete.run();
+                    return; // keep the current tool and palette state
                 }
-                //prajwal undo redo
+                // prajwal undo redo
                 if (t == ToolbarOptions.Undo) {
-                    if (onUndo != null) onUndo.run();
+                    if (onUndo != null)
+                        onUndo.run();
                     return;
                 }
                 if (t == ToolbarOptions.Redo) {
-                    if (onRedo != null) onRedo.run();
+                    if (onRedo != null)
+                        onRedo.run();
                     return;
                 }
-                if(t == ToolbarOptions.Simulate){
-                    if(onSimulate != null) onSimulate.run();
+                if (t == ToolbarOptions.Validate) {
+                    if (onValidate != null)
+                        onValidate.run();
+                    return;
+                }
+                if (t == ToolbarOptions.Simulate) {
+                    if (onSimulate != null)
+                        onSimulate.run();
+                    return;
+                }
+                if (t == ToolbarOptions.TruthTable) {
+                    if (onTruthTable != null)
+                        onTruthTable.run();
+                    return;
+                }
+                if (t == ToolbarOptions.Home) {
+                    if (onHome != null)
+                        onHome.run();
                     return;
                 }
                 if (t == ToolbarOptions.Validate) {
@@ -81,25 +105,33 @@ public class EditorToolbar extends HBox {
         }
     }
 
-    //setters getters for undo redo
-    public void setOnUndo(Runnable action) { 
-        this.onUndo = action; 
+    // setters getters for undo redo
+    public void setOnUndo(Runnable action) {
+        this.onUndo = action;
     }
-    public void setOnRedo(Runnable action) { 
-        this.onRedo = action; 
+
+    public void setOnRedo(Runnable action) {
+        this.onRedo = action;
     }
 
     public void setHistoryState(boolean canUndo, boolean canRedo) {
-        if (undoButton != null) undoButton.setDisable(!canUndo);
-        if (redoButton != null) redoButton.setDisable(!canRedo);
+        if (undoButton != null)
+            undoButton.setDisable(!canUndo);
+        if (redoButton != null)
+            redoButton.setDisable(!canRedo);
     }
 
     public void setOnDelete(Runnable action) {
         this.onDelete = action;
     }
-
-    public void setOnSimulate(Runnable action){
+    public void setOnValidate(Runnable action) {
+        this.onValidate = action;
+    }
+    public void setOnSimulate(Runnable action) {
         this.onSimulate = action;
+    }
+    public void setOnTruthTable(Runnable action) {
+        this.onTruthTable = action;
     }
 
     public void setOnValidate(Runnable action) {
@@ -121,9 +153,11 @@ public class EditorToolbar extends HBox {
     public void setOnZoomIn(Runnable action) {
         this.onZoomIn = action;
     }
+
     public void setOnZoomOut(Runnable action) {
         this.onZoomOut = action;
     }
-
-    
+    public void setOnHome(Runnable action) {
+        this.onHome = action;
+    }
 }

@@ -1,14 +1,17 @@
 package com.example.mini_project.gui;
+
 import javafx.scene.Group;
 import javafx.scene.transform.Scale;
 
 /**
  * Owns the zoom / pan state of the world Group.
  *
- * screen = translate + zoom * world   (scale pivot is the world origin, so the maths
+ * screen = translate + zoom * world (scale pivot is the world origin, so the
+ * maths
  * is the same no matter how big the group's bounds are).
  *
- * Every time the view changes, {@code onChange} is run so the screen-space grid can redraw.
+ * Every time the view changes, {@code onChange} is run so the screen-space grid
+ * can redraw.
  */
 public class ViewportManager {
     private final Group view;
@@ -23,7 +26,8 @@ public class ViewportManager {
     private double translateX = 0.0;
     private double translateY = 0.0;
 
-    // Screen point that zoom buttons zoom around (kept = centre of the visible canvas).
+    // Screen point that zoom buttons zoom around (kept = centre of the visible
+    // canvas).
     private double anchorX = 0.0;
     private double anchorY = 0.0;
 
@@ -37,7 +41,8 @@ public class ViewportManager {
     }
 
     public void setAnchor(double x, double y) {
-        this.anchorX = x; this.anchorY = y;
+        this.anchorX = x;
+        this.anchorY = y;
     }
 
     private void apply() {

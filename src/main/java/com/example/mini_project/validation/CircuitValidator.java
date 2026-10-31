@@ -1,7 +1,8 @@
 package com.example.mini_project.validation;
 import com.example.mini_project.domain.*;
 import java.util.*;
-
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 public class CircuitValidator {
     //prajw : start
     private final List<String> errors = new ArrayList<>();
@@ -62,9 +63,8 @@ public class CircuitValidator {
                 PointNode node = wire.getStartNode();
                 if (node == null ||
                     countConnections(circuit, node) < 2) {
-                    //prajw : start
+                    System.err.println("VALIDATION ERROR: Wire " + wire.getId() + " has a dangling start.");
                     reportError("VALIDATION ERROR: Wire " + wire.getId() + " has a dangling start.", wire);
-                    //prajw: end
                     valid = false;
                 }
             }
@@ -72,9 +72,8 @@ public class CircuitValidator {
                 PointNode node = wire.getEndNode();
                 if (node == null ||
                     countConnections(circuit, node) < 2) {
-                    //prajw : start
+                    System.err.println("VALIDATION ERROR: Wire " + wire.getId() + " has a dangling end.");
                     reportError("VALIDATION ERROR: Wire " + wire.getId() + " has a dangling end.", wire);
-                    //prajw: end
                     valid = false;
                 }
             }
@@ -99,18 +98,18 @@ public class CircuitValidator {
             if (element instanceof Gate gate) {
                 for (Port port : gate.getInputPorts()) {
                     if (!isPortConnected(circuit, port)) {
-                        //prajw : start
-                        reportError("VALIDATION ERROR: Gate " + gate.getId() + " has an unconnected input: " + port.getId(), gate);
-                        //prajw: end
+                        LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                        System.err.println(time + " - Validation Error: Gate " + gate.getId() + " is not connected at input: " + port.getId());
+                        reportError("Validation Error: Gate " + gate.getId() + " is not connected at input: " + port.getId(), gate);
                         valid = false;
                     }
                 }
             } else if (element instanceof OutputElement led) {
                 Port port = led.getInputPort();
                 if (!isPortConnected(circuit, port)) {
-                    //prajw : start
+                    LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                    System.err.println("VALIDATION ERROR: LED " + led.getId() + " has an unconnected input");
                     reportError("VALIDATION ERROR: LED " + led.getId() + " has an unconnected input", led);
-                    //prajw: end
                     valid = false;
                 }
             }
@@ -128,22 +127,22 @@ public class CircuitValidator {
     public boolean validateInputsAndOutputs(Circuit circuit) {
         boolean valid = true;
         if (circuit.getElements().isEmpty()) {
-            //prajw : start
+            LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+            System.err.println(time + " - Validation Error: Circuit is empty.");
             reportError("VALIDATION ERROR: Circuit is empty.");
-            //prajw: end
             return false;
         }
         for (SubCircuit subCircuit : circuit.splitIntoDisjointSubCircuits()) {
             if (subCircuit.getInputs().isEmpty()) {
-                //prajw : start
+                LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                System.err.println(time + " - Validation Error: " + subCircuit.getId() + " needs atleast one input switch.");
                 reportSubCircuitError("VALIDATION ERROR: " + subCircuit.getId() + " has no input switch.", subCircuit);
-                //prajw: end
                 valid = false;
             }
             if (subCircuit.getOutputs().isEmpty()) {
-                //prajw : start
+                LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                System.err.println(time + " - Validation Error: " + subCircuit.getId() + " needs atleast one LED.");
                 reportSubCircuitError("VALIDATION ERROR: " + subCircuit.getId() + " has no output LED.", subCircuit);
-                //prajw: end
                 valid = false;
             }
         }
@@ -209,9 +208,9 @@ public class CircuitValidator {
         boolean valid = true;
         for (CircuitElement element : circuit.getElements().values()) {
             if ((element instanceof Gate || element instanceof InputElement) && !useful.contains(element)) {
-                //prajw : start
+                LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                System.err.println(time + " - Validation Error: " + element.getId() + " has no connection to any LED.");
                 reportError("VALIDATION ERROR: " + element.getId() + " does not contribute to any LED.", element);
-                //prajw: end
                 valid = false;
             }
         }
@@ -226,33 +225,31 @@ public class CircuitValidator {
             PointNode endNode = wire.getEndNode();
             if (startNode != null) {
                 if (!nodes.contains(startNode) || !startNode.getConnectedSegments().contains(wire)) {
-                    //prajw : start
+                    LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                    System.err.println(time + " - Validation Error: Wire " + wire.getId() + " has an invalid start node/port.");
                     reportError("VALIDATION ERROR: Wire " + wire.getId() + " has an invalid start node.", wire);
-                    //prajw: end
                     valid = false;
                 }
             }
             if (endNode != null) {
                 if (!nodes.contains(endNode) || !endNode.getConnectedSegments().contains(wire)) {
-                    //prajw : start
+                    LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                    System.err.println(time + " - Validation Error: Wire " + wire.getId() + " has an invalid end node.");
                     reportError("VALIDATION ERROR: Wire " + wire.getId() + " has an invalid end node.", wire);
-                    //prajw: end
                     valid = false;
                 }
             }
             if (wire.getStartPort() != null &&
                 circuit.getElement(wire.getStartPort().getOwner().getId()) != wire.getStartPort().getOwner()) {
-                //prajw : start
-                reportError("VALIDATION ERROR: Wire " + wire.getId() + " references a removed start component.",
-                        wire, wire.getStartPort());
-                //prajw: end
-                valid = false;
+                    LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                    System.err.println(time + " - Validation Error: Wire " + wire.getId() + " references a removed start component.");
+                    reportError("VALIDATION ERROR: Wire " + wire.getId() + " references a removed start component.", wire, wire.getStartPort());
+                    valid = false;
             }
             if (wire.getEndPort() != null && circuit.getElement(wire.getEndPort().getOwner().getId()) != wire.getEndPort().getOwner()) {
-                //prajw : start
-                reportError("VALIDATION ERROR: Wire " + wire.getId() + " references a removed end component.",
-                        wire, wire.getEndPort());
-                //prajw: end
+                LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                System.err.println(time + " - Validation Error: Wire " + wire.getId() + " references a removed end component.");
+                reportError("VALIDATION ERROR: Wire " + wire.getId() + " references a removed end component.", wire, wire.getEndPort());
                 valid = false;
             }
         }
@@ -264,27 +261,87 @@ public class CircuitValidator {
                 }
             }
             if (actualConnections != node.getConnectedSegments().size()) {
-                //prajw : start
-                reportError("VALIDATION ERROR: Node " + node.getId() + " has inconsistent wire connections.", node);
-                //prajw: end
+                LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                System.err.println(time + " - Validation Error: Node " + node.getId() + " has inconsistent wire connections.");
+                reportError("VALIDATION ERROR: Node " + node.getId() + " has inconsistent wire connections.", node, null);
                 valid = false;
             }
             for (WireSegment wire : node.getConnectedSegments()) {
                 if (!wires.contains(wire) || (wire.getStartNode() != node && wire.getEndNode() != node)) {
-                    //prajw : start
-                    reportError("VALIDATION ERROR: Node " + node.getId() + " references an invalid wire.", node, wire);
-                    //prajw: end
+                    LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                    System.err.println(time + " - Validation Error: Node " + node.getId() + " references an invalid wire.");
+                    reportError("VALIDATION ERROR: Node " + node.getId() + " references an invalid wire.", wire, null);
                     valid = false;
                 }
             }
             if (node.isJunction() != (actualConnections >= 3)) {
-                //prajw : start
-                reportError("VALIDATION ERROR: Node " + node.getId() + " has incorrect junction status.", node);
-                //prajw: end
+                LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                System.err.println(time + " - Validation Error: Node " + node.getId() + "has incorrect junction status.");
                 valid = false;
             }
         }
         return valid;
     }
 
+    public boolean validateWireDrivers(Circuit circuit) {
+        boolean valid = true;
+        Set<WireSegment> visited = new HashSet<>();
+        for (WireSegment start : circuit.getWireSegments()) {
+            if (visited.contains(start)) continue;
+            // Find all wire segments in this electrical network.
+            Queue<WireSegment> queue = new ArrayDeque<>();
+            Set<Port> drivers = Collections.newSetFromMap(new IdentityHashMap<>());
+            queue.add(start);
+            visited.add(start);
+            while (!queue.isEmpty()) {
+                WireSegment current = queue.remove();
+                Port startPort = current.getStartPort();
+                Port endPort = current.getEndPort();
+                if (startPort != null && startPort.getType() == PortType.OUTPUT)
+                    drivers.add(startPort);
+
+                if (endPort != null && endPort.getType() == PortType.OUTPUT)
+                    drivers.add(endPort);
+                // Travel through the junctions and corners.
+                PointNode[] nodes = {current.getStartNode(), current.getEndNode()};
+
+                for (PointNode node : nodes) {
+                    if (node == null) continue;
+                    for (WireSegment next : circuit.getWireSegments()) {
+                        if (next.getStartNode() == node || next.getEndNode() == node) {
+                            if (visited.add(next)) {
+                                queue.add(next);
+                            }
+                        }
+                    }
+                }
+
+                // Also follow segments sharing the same port.
+                for (WireSegment next : circuit.getWireSegments()) {
+                    if (sharesPort(current, next)) {
+                        if (visited.add(next)) {
+                            queue.add(next);
+                        }
+                    }
+                }
+            }
+            if (drivers.isEmpty()) {
+                LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                System.err.println(time + " - Validation error: Wire network containing " + start.getId() + " has no signal source.");
+                valid = false;
+            } else if (drivers.size() > 1) {
+                LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                System.err.println(time + " - Validation error: Wire network containing " + start.getId() + " has multiple signal sources.");
+                valid = false;
+            }
+        }
+        return valid;
+    }
+
+    private boolean sharesPort(WireSegment first, WireSegment second) {
+        Port a = first.getStartPort();
+        Port b = first.getEndPort();
+        return (a != null && (a == second.getStartPort() || a == second.getEndPort())) ||
+                (b != null &&(b == second.getStartPort() || b == second.getEndPort()));
+    }
 }

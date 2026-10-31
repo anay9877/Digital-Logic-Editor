@@ -3,9 +3,16 @@ package com.example.mini_project.controller;
 import com.example.mini_project.domain.*;
 import com.example.mini_project.gui.CircuitCanvas;
 import com.example.mini_project.gui.ToolbarOptions;
+import com.example.mini_project.gui.TruthTableWindow;
 import com.example.mini_project.validation.*;
 import com.example.mini_project.controller.command.*;
-import com.example.mini_project.validation.CircuitSimulator;
+
+import javafx.animation.PauseTransition;
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.stage.Window;
+import javafx.util.Duration;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,6 +22,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.function.Consumer;
 
 public class EditorController {
@@ -70,7 +80,7 @@ public class EditorController {
     public CircuitCanvas getCanvas() {
         return canvas;
     }
-
+    
     //prajw : start
     /** Sets the UI callback that receives a batch of validation errors. */
     public void setOnValidationErrors(Consumer<List<String>> listener) {
@@ -121,6 +131,27 @@ public class EditorController {
     }
     //prajw: end
 
+    private double getElementSize(CircuitElement element) {
+        if (element instanceof Gate) return 128;
+        return 64;
+    }
+
+    private boolean isOverlapping(CircuitElement element1, double x1, double y1, 
+                                CircuitElement element2, double x2, double y2) {
+        double element1Size = getElementSize(element1);
+        double element2Size = getElementSize(element2);
+        return (x1 < x2 + element2Size) && (x1 + element1Size > x2) &&
+                (y1 < y2 + element2Size) && (y1 + element1Size > y2);
+    }
+
+    private boolean isOverlappingExistingElement(CircuitElement newElement) {
+        for (CircuitElement element: circuit.getElements().values()) {
+            if (isOverlapping(element, element.getX(), element.getY(), newElement, newElement.getX(), newElement.getY())) {
+                return true;
+            }
+        }
+        return false;
+    }
     // Used for deletion of entire circuit
     public void newCircuit() {
         circuit.clear();
@@ -148,10 +179,19 @@ public class EditorController {
     }
 
     public void onElementPlaced(ComponentType type, double x, double y) {
+        double newX = CircuitCanvas.snap(x);
+        double newY = CircuitCanvas.snap(y);
+
         int n = counters.getOrDefault(type, 0) + 1;
-        counters.put(type, n);
         String id = type.name() + "-" + n;
-        CircuitElement element = type.create(id, CircuitCanvas.snap(x), CircuitCanvas.snap(y));
+        CircuitElement newElement = type.create(id, newX, newY);
+        if (isOverlappingExistingElement(newElement)) {
+            LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+            System.err.println(time + " - Component overlapping, cannot place it there.");
+            return;
+        }
+        counters.put(type, n);
+        CircuitElement element = newElement;
         circuit.addElement(element);
         stopSimulation();
         history.record(new PlaceElementCommand(circuit, element));
@@ -213,13 +253,14 @@ public class EditorController {
         return circuit.removeElement(id);   // counterpart of onElementPlaced
     }
 
-    public List<CircuitElement> validateAndGetOrder() {
+    public List<CircuitElement> validateAndGetOrder(Circuit targetCircuit) {
         CircuitValidator validator = new CircuitValidator();
         boolean wiresValid = validator.validateDanglingWires(circuit);
         boolean inputsValid = validator.validateInputPorts(circuit);
         boolean ioValid = validator.validateInputsAndOutputs(circuit);
         boolean logicValid = validator.validateDeadLogic(circuit);
         boolean referencesValid = validator.validateWireReferences(circuit);
+        boolean connectionsValid = validator.validateWireDrivers(targetCircuit);
         if (!(wiresValid && inputsValid && ioValid && logicValid && referencesValid)) {
             //prajw : start
             List<String> errors = validator.getErrors();
@@ -261,16 +302,89 @@ public class EditorController {
 
     public void runSimulation() {
         try {
-            List<CircuitElement> order = validateAndGetOrder();
-            simulator = new CircuitSimulator(circuit, order);
+            Circuit targetCircuit = getCircuitToProcess();
+            List<CircuitElement> order = validateAndGetOrder(targetCircuit);
+            simulator = new CircuitSimulator(targetCircuit, order);
             simulating = true;
             printLedOutputs(order);
-            notifyRender();            // redraws LEDs: ON -> LED_ON_SVG, OFF -> LED_OFF_SVG
+            notifyRender();                      // no pause, no window
         } catch (IllegalStateException ex) {
             System.err.println("Cannot simulate: " + ex.getMessage());
             simulating = false;
             simulator = null;
         }
+    }
+
+    public void showTruthTable() {
+        if (canvas == null) return;
+
+        List<SubCircuitTable> tables = buildSubCircuitTables();
+        if (tables.isEmpty()) {
+            new Alert(Alert.AlertType.INFORMATION, "The canvas is empty.", ButtonType.OK).showAndWait();
+            return;
+        }
+
+        // keep the canvas live (switch toggles update LEDs) when the whole canvas is valid
+        try {
+            simulator = new CircuitSimulator(circuit, validateAndGetOrder(circuit));
+            simulating = true;
+        } catch (IllegalStateException ex) {
+            stopSimulation();      // some circuit is unfinished; press Simulate once it is complete
+        }
+        notifyRender();
+
+        Window owner = canvas.getScene() != null ? canvas.getScene().getWindow() : null;
+        TruthTableWindow.show(owner, tables, this::highlightSubCircuit);
+    }
+
+    /** One table per connected piece of the canvas, numbered top-left to bottom-right. */
+    private List<SubCircuitTable> buildSubCircuitTables() {
+        List<SubCircuit> subs = new ArrayList<>(circuit.splitIntoDisjointSubCircuits());
+        subs.sort(Comparator
+                .comparingDouble((SubCircuit s) -> elementsOf(s).stream().mapToDouble(CircuitElement::getY).min().orElse(0))
+                .thenComparingDouble(s -> elementsOf(s).stream().mapToDouble(CircuitElement::getX).min().orElse(0)));
+
+        List<SubCircuitTable> result = new ArrayList<>();
+        int n = 0;
+        for (SubCircuit sub : subs) {
+            n++;
+            Circuit part = circuitOf(sub);
+            List<String> elementIds = elementsOf(sub).stream().map(CircuitElement::getId).toList();
+            List<String> wireIds = sub.getWireSegments().stream().map(WireSegment::getId).toList();
+
+            TruthTableData data = null;
+            String error = null;
+            try {
+                data = TruthTableGenerator.generate(part, validateAndGetOrder(part));
+            } catch (IllegalStateException ex) {
+                error = ex.getMessage();
+            }
+            result.add(new SubCircuitTable("Circuit " + n, sub.getInputs().size(), sub.getOutputs().size(),
+                    elementIds, wireIds, data, error));
+        }
+        return result;
+    }
+
+    private static List<CircuitElement> elementsOf(SubCircuit sub) {
+        List<CircuitElement> all = new ArrayList<>(sub.getgates().values());
+        all.addAll(sub.getInputs());
+        all.addAll(sub.getOutputs());
+        return all;
+    }
+
+    private static Circuit circuitOf(SubCircuit sub) {
+        Circuit part = new Circuit();
+        elementsOf(sub).forEach(part::addElement);
+        sub.getPointNodes().forEach(part::addPointNode);
+        sub.getWireSegments().forEach(part::addWireSegment);
+        return part;
+    }
+
+    /** Called by the truth-table window: show which circuit is being viewed (empty lists = clear). */
+    private void highlightSubCircuit(List<String> elementIds, List<String> wireIds) {
+        selection.clear();
+        selection.selectElementsAndWires(elementIds, wireIds, true);
+        notifyRender();
     }
 
     private void printLedOutputs(List<CircuitElement> order) {
@@ -289,14 +403,15 @@ public class EditorController {
 
     private void handleValidate() {
         try {
-            List<CircuitElement> order = validateAndGetOrder();
+            Circuit targeCircuit = getCircuitToProcess();
+            List<CircuitElement> order = validateAndGetOrder(targeCircuit);
             System.out.println("Circuit validation passed.");
             System.out.println("Simulation order:");
             for (CircuitElement element : order) {
                 System.out.println(element.getId());
             }
         } catch (IllegalStateException ex) {
-            System.err.println("Circuit validation failed: " + ex.getMessage());
+            System.err.println(ex.getMessage());
         }
     }
 
@@ -331,65 +446,66 @@ public class EditorController {
             recordWithWires("Move elements", wiresBefore, new MoveElementsCommand(moves));
         }
     }
+    private Circuit getCircuitToProcess() {
+        Set<String> selectedElements = selection.getSelectedElements();
+        Set<String> selectedWires = selection.getSelectedWires();
+        if (selectedElements.isEmpty() && selectedWires.isEmpty())
+            return circuit;             // validating/simulating entire circuit if nothing selected
 
-    public void beginLiveMove() {
-        liveMoveOrigins.clear();
-        for (CircuitElement element : circuit.getElements().values()) {
-            liveMoveOrigins.put(element.getId(),
-                    new MoveOrigin(element, element.getX(), element.getY()));
-        }
-        liveMoveWiresBefore = WireChangeCommand.capture(circuit);
-        liveMoving = true;
-        stopSimulation();
-    }
+        Circuit selectedCircuit = new Circuit();
+        for (SubCircuit subCircuit : circuit.splitIntoDisjointSubCircuits()) {
+            boolean selected = false;
 
-    public void liveMove(Collection<String> ids, double dx, double dy) {
-        if (!liveMoving || liveMoveWiresBefore == null) return;
-
-        WireChangeCommand currentChanges =
-                WireChangeCommand.diff(circuit, liveMoveWiresBefore, WireChangeCommand.capture(circuit));
-        if (currentChanges != null) currentChanges.undo();
-
-        List<CircuitElement> moved = new ArrayList<>();
-        for (String id : ids) {
-            MoveOrigin origin = liveMoveOrigins.get(id);
-            if (origin == null) continue;
-            CircuitElement element = origin.element();
-            element.setPosition(CircuitCanvas.snap(origin.x() + dx), CircuitCanvas.snap(origin.y() + dy));
-            moved.add(element);
-        }
-        //prajw : start
-        moveJunctionsWithMovedPorts(moved);
-        //prajw: end
-        for (CircuitElement element : moved) rerouteElementWires(element);
-        if (canvas != null) canvas.renderWiresOnly();
-    }
-
-    public void endLiveMove(Collection<String> ids, double dx, double dy) {
-        if (!liveMoving) return;
-        liveMove(ids, dx, dy);
-        liveMoving = false;
-
-        List<MoveElementsCommand.Move> moves = new ArrayList<>();
-        for (String id : ids) {
-            MoveOrigin origin = liveMoveOrigins.get(id);
-            if (origin == null) continue;
-            CircuitElement element = origin.element();
-            if (origin.x() != element.getX() || origin.y() != element.getY()) {
-                moves.add(new MoveElementsCommand.Move(
-                        element, origin.x(), origin.y(), element.getX(), element.getY()));
+            // check if selected subcircuit also contains a gate
+            for (String id : subCircuit.getgates().keySet()) {
+                if (selectedElements.contains(id)) {
+                    selected = true;
+                    break;
+                }
+            }
+            // Check if switch selected
+            for (InputElement input : subCircuit.getInputs()) {
+                if (selectedElements.contains(input.getId())) {
+                    selected = true;
+                    break;
+                }
+            }
+            // check if LEDs selected
+            for (OutputElement led : subCircuit.getOutputs()) {
+                if (selectedElements.contains(led.getId())) {
+                    selected = true;
+                    break;
+                }
+            }
+            // check if wires selected
+            for (WireSegment wire : subCircuit.getWireSegments()) {
+                if (selectedWires.contains(wire.getId())) {
+                    selected = true;
+                    break;
+                }
+            }
+            if (!selected) continue;
+            for (Gate gate: subCircuit.getgates().values()) {
+                selectedCircuit.addElement(gate);
+            }
+            for (InputElement input: subCircuit.getInputs()) {
+                selectedCircuit.addElement(input);
+            }
+            for (OutputElement output: subCircuit.getOutputs()) {
+                selectedCircuit.addElement(output);
+            }
+            for (PointNode node: subCircuit.getPointNodes()) {
+                selectedCircuit.addPointNode(node);
+            }
+            for (WireSegment wire: subCircuit.getWireSegments()) {
+                selectedCircuit.addWireSegment(wire);
             }
         }
-
-        WireChangeCommand.Image wiresBefore = liveMoveWiresBefore;
-        liveMoveWiresBefore = null;
-        liveMoveOrigins.clear();
-        if (!moves.isEmpty()) {
-            recordWithWires("Move elements", wiresBefore, new MoveElementsCommand(moves));
+        if (selectedCircuit.getElements().isEmpty()) {
+            throw new IllegalStateException("No subcircuit found for the selection");
         }
-        notifyRender();
+        return selectedCircuit;
     }
-
     // Wire drawing — called by CircuitCanvas mouse handlers
     private static final double PORT_HIT_RADIUS = 8.0;
     private static final double NODE_HIT_RADIUS = 8.0;
@@ -523,8 +639,9 @@ public class EditorController {
             targetSegment = findWireSegmentAt(mouseX, mouseY);
         }
         if (targetPort == null && targetNode == null && targetSegment == null) {
+            LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
             //prajw : start
-            String error = "CONNECTION REJECTED: Wire cannot end in empty space";
+            String error = time + " - Connection Rejected: Wire cannot end without a node/port.";
             System.err.println(error);
             publishError(error, start);
             //prajw: end
@@ -553,7 +670,8 @@ public class EditorController {
         }
         if (error != null) {
             //prajw : start
-            String message = "CONNECTION REJECTED: " + error;
+            LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+            String message = time + " - Connection Rejected: " + error;
             System.err.println(message);
             publishError(message, start, end);
             //prajw: end
