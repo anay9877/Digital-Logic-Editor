@@ -277,6 +277,7 @@ public class CircuitValidator {
             if (node.isJunction() != (actualConnections >= 3)) {
                 LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
                 System.err.println(time + " - Validation Error: Node " + node.getId() + "has incorrect junction status.");
+                reportError("VALIDATION ERROR: Node " + node.getId() + " has incorrect junction status.", node);
                 valid = false;
             }
         }
@@ -291,10 +292,12 @@ public class CircuitValidator {
             // Find all wire segments in this electrical network.
             Queue<WireSegment> queue = new ArrayDeque<>();
             Set<Port> drivers = Collections.newSetFromMap(new IdentityHashMap<>());
+            Set<WireSegment> networkSegments = new HashSet<>();
             queue.add(start);
             visited.add(start);
             while (!queue.isEmpty()) {
                 WireSegment current = queue.remove();
+                networkSegments.add(current);
                 Port startPort = current.getStartPort();
                 Port endPort = current.getEndPort();
                 if (startPort != null && startPort.getType() == PortType.OUTPUT)
@@ -327,11 +330,17 @@ public class CircuitValidator {
             }
             if (drivers.isEmpty()) {
                 LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
-                System.err.println(time + " - Validation error: Wire network containing " + start.getId() + " has no signal source.");
+                String message = "VALIDATION ERROR: Wire network containing " + start.getId() + " has no signal source.";
+                System.err.println(time + " - " + message);
+                reportError(message, networkSegments.toArray());
                 valid = false;
             } else if (drivers.size() > 1) {
                 LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
-                System.err.println(time + " - Validation error: Wire network containing " + start.getId() + " has multiple signal sources.");
+                String message = "VALIDATION ERROR: Wire network containing " + start.getId() + " has multiple signal sources.";
+                System.err.println(time + " - " + message);
+                List<Object> targets = new ArrayList<>(networkSegments);
+                targets.addAll(drivers);
+                reportError(message, targets.toArray());
                 valid = false;
             }
         }

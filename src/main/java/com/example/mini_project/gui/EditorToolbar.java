@@ -24,7 +24,6 @@ public class EditorToolbar extends HBox {
     private Button redoButton;
     private Runnable onValidate;
     private Runnable onSimulate;
-    private Runnable onValidate;
     private Runnable onTruthTable;
 
     public EditorToolbar(Circuit circuit) {
@@ -132,10 +131,6 @@ public class EditorToolbar extends HBox {
     }
     public void setOnTruthTable(Runnable action) {
         this.onTruthTable = action;
-    }
-
-    public void setOnValidate(Runnable action) {
-        this.onValidate = action;
     }
 
     public void setOnUserSelect(Runnable r) {

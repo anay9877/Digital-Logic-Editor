@@ -46,7 +46,9 @@ public class EditorController {
     private WireChangeCommand.Image wireGestureBefore;
     private WireChangeCommand.Image liveMoveWiresBefore;
     private final Map<String, MoveOrigin> liveMoveOrigins = new HashMap<>();
-    private boolean liveMoving;
+    
+    private boolean liveMoving =  false;
+
     private CircuitSimulator simulator;
     private boolean simulating = false;
     private boolean isValidated = false;
@@ -255,13 +257,13 @@ public class EditorController {
 
     public List<CircuitElement> validateAndGetOrder(Circuit targetCircuit) {
         CircuitValidator validator = new CircuitValidator();
-        boolean wiresValid = validator.validateDanglingWires(circuit);
-        boolean inputsValid = validator.validateInputPorts(circuit);
-        boolean ioValid = validator.validateInputsAndOutputs(circuit);
-        boolean logicValid = validator.validateDeadLogic(circuit);
-        boolean referencesValid = validator.validateWireReferences(circuit);
+        boolean wiresValid = validator.validateDanglingWires(targetCircuit);
+        boolean inputsValid = validator.validateInputPorts(targetCircuit);
+        boolean ioValid = validator.validateInputsAndOutputs(targetCircuit);
+        boolean logicValid = validator.validateDeadLogic(targetCircuit);
+        boolean referencesValid = validator.validateWireReferences(targetCircuit);
         boolean connectionsValid = validator.validateWireDrivers(targetCircuit);
-        if (!(wiresValid && inputsValid && ioValid && logicValid && referencesValid)) {
+        if (!(wiresValid && inputsValid && ioValid && logicValid && referencesValid && connectionsValid)) {
             //prajw : start
             List<String> errors = validator.getErrors();
             markInvalidIds(validator.getInvalidElementIds(), validator.getInvalidWireIds());
@@ -274,7 +276,7 @@ public class EditorController {
         //prajw : start
         CircuitTopology topology = new CircuitTopology();
         try {
-            return topology.sort(circuit);
+            return topology.sort(targetCircuit);
         } catch (IllegalStateException ex) {
             List<String> errors = List.of(ex.getMessage());
             markInvalidIds(topology.getInvalidElementIds(), topology.getInvalidWireIds());
@@ -419,31 +421,65 @@ public class EditorController {
         handleValidate();
     }
 
-    public void moveElements(Collection<String> ids, double dx, double dy) {
-        WireChangeCommand.Image wiresBefore = WireChangeCommand.capture(circuit);
+    public void beginLiveMove() {
+        liveMoveOrigins.clear();
+        liveMoveWiresBefore = WireChangeCommand.capture(circuit);
+        liveMoving = true;
+    }
+
+    // Mouse released: final pose, one full redraw, one undo step
+    public void endLiveMove(Collection<String> ids, double dx, double dy) {
+        if (!liveMoving) return;
+        liveMove(ids, dx, dy);
+        liveMoving = false;
+
         List<MoveElementsCommand.Move> moves = new ArrayList<>();
+        for (MoveOrigin origin : liveMoveOrigins.values()) {
+            CircuitElement element = origin.element();
+            if (element.getX() != origin.x() || element.getY() != origin.y()) {
+                moves.add(new MoveElementsCommand.Move(
+                        element, origin.x(), origin.y(), element.getX(), element.getY()));
+            }
+        }
+
+        WireChangeCommand.Image wiresBefore = liveMoveWiresBefore;
+        liveMoveWiresBefore = null;
+        liveMoveOrigins.clear();
+        stopSimulation();
+        notifyRender();
+        if (wiresBefore != null) {
+            if (moves.isEmpty()) {
+                recordWithWires("Move elements", wiresBefore);
+            } else {
+                recordWithWires("Move elements", wiresBefore, new MoveElementsCommand(moves));
+            }
+        }
+    }
+
+
+
+    public void liveMove(Collection<String> ids, double dx, double dy) {
+        if (!liveMoving) return;
+
         List<CircuitElement> movedElements = new ArrayList<>();
         for (String id : ids) {
             CircuitElement e = circuit.getElement(id);
             if (e != null) {
-                double oldX = e.getX();
-                double oldY = e.getY();
+                liveMoveOrigins.putIfAbsent(id, new MoveOrigin(e, e.getX(), e.getY()));
                 double newX = CircuitCanvas.snap(e.getX() + dx);
                 double newY = CircuitCanvas.snap(e.getY() + dy);
                 if (newX == e.getX() && newY == e.getY()) continue;
                 e.setPosition(newX, newY);
                 movedElements.add(e);
-                moves.add(new MoveElementsCommand.Move(e, oldX, oldY, newX, newY));
             }
         }
-        if (!moves.isEmpty()) {
+        if (!movedElements.isEmpty()) {
             //prajw : start
             moveJunctionsWithMovedPorts(movedElements);
             //prajw: end
             for (CircuitElement element : movedElements) rerouteElementWires(element);
             stopSimulation();
             notifyRender();
-            recordWithWires("Move elements", wiresBefore, new MoveElementsCommand(moves));
         }
     }
     private Circuit getCircuitToProcess() {
