@@ -477,6 +477,33 @@ public class EditorController {
             }
         }
 
+        // Reject the move if a moved element ended up on top of a non-moved one
+        boolean overlaps = false;
+        for (MoveOrigin origin : liveMoveOrigins.values()) {
+            CircuitElement m = origin.element();
+            for (CircuitElement other : circuit.getElements().values()) {
+                if (other == m || ids.contains(other.getId())) continue;
+                if (isOverlapping(m, m.getX(), m.getY(), other, other.getX(), other.getY())) {
+                    overlaps = true;
+                    break;
+                }
+            }
+            if (overlaps) break;
+        }
+        if (overlaps) {
+            if (!moves.isEmpty()) new MoveElementsCommand(moves).undo();   // gates back
+            WireChangeCommand back = WireChangeCommand.diff(
+                    circuit, liveMoveWiresBefore, WireChangeCommand.capture(circuit));
+            if (back != null) back.undo();                                  // wires back
+            liveMoveWiresBefore = null;
+            liveMoveOrigins.clear();
+            stopSimulation();
+            notifyRender();
+            LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+            System.err.println(time + " - Move failed: Components cannot overlap.");
+            return;
+        }
+
         WireChangeCommand.Image wiresBefore = liveMoveWiresBefore;
         liveMoveWiresBefore = null;
         liveMoveOrigins.clear();
@@ -496,36 +523,27 @@ public class EditorController {
     public void liveMove(Collection<String> ids, double dx, double dy) {
         if (!liveMoving) return;
 
-        boolean blocked = false;
-
         List<CircuitElement> movedElements = new ArrayList<>();
         for (String id : ids) {
             CircuitElement e = circuit.getElement(id);
             if (e != null) {
                 MoveOrigin origin = liveMoveOrigins.computeIfAbsent(
                         id, ignored -> new MoveOrigin(e, e.getX(), e.getY()));
-                double newX = CircuitCanvas.snap(origin.x() + dx);   // was e.getX() + dx
-                double newY = CircuitCanvas.snap(origin.y() + dy);   // was e.getY() + dy
-
-                //avoids overlapping of elements while moving
-                for (CircuitElement other : circuit.getElements().values()) {
-                    if (ids.contains(other.getId())) continue;
-                    if (isOverlapping(e, newX, newY, other, other.getX(), other.getY())) { blocked = true; break; }
-                }
-                if (blocked) continue;
-                
+                double newX = CircuitCanvas.snap(origin.x() + dx);
+                double newY = CircuitCanvas.snap(origin.y() + dy);
                 if (newX == e.getX() && newY == e.getY()) continue;
                 e.setPosition(newX, newY);
                 movedElements.add(e);
             }
         }
         if (!movedElements.isEmpty()) {
+            //prajw : start
             moveJunctionsWithMovedPorts(movedElements);
+            //prajw: end
             for (CircuitElement element : movedElements) rerouteElementWires(element);
             stopSimulation();
-            if (canvas != null) canvas.renderWiresOnly();            // was notifyRender()
+            if (canvas != null) canvas.renderWiresOnly();
         }
-        
     }
     private Circuit getCircuitToProcess() {
         Set<String> selectedElements = selection.getSelectedElements();
