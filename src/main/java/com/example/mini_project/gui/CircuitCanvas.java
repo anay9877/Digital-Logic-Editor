@@ -59,6 +59,7 @@ public class CircuitCanvas extends Pane {
     private final Canvas gridCanvas = new Canvas();
     private final Group nodeLayer = new Group();
     private final Label hoverLabel = new Label();
+    private String hoveredId; // Id of the element the mouse is currently over; used to move the label while dragging.
 
     private final ViewportManager viewportManager;
     private final SvgIconRegistry iconRegistry = new SvgIconRegistry();
@@ -340,6 +341,10 @@ public class CircuitCanvas extends Pane {
     // Full redraw of circuit elements. Called after any state change.
     public void render() {
         hoverLabel.setVisible(false);
+        hoverLabel.setTranslateX(0);  // drop any offset left over from a drag
+        hoverLabel.setTranslateY(0);
+        hoveredId = null;  // nothing is hovered after a full redraw
+
         nodeLayer.getChildren().clear();
 
         // 1. Wire segments
@@ -432,6 +437,9 @@ public class CircuitCanvas extends Pane {
             icon.setUserData(elem.getId());
             icon.setPickOnBounds(true);
             icon.setOnMouseEntered(e -> {
+                hoveredId = elem.getId();  // remember who is hovered
+                hoverLabel.setTranslateX(0); // start from the gate's real position
+                hoverLabel.setTranslateY(0);
                 hoverLabel.setText(elem.getId());
                 hoverLabel.applyCss();
                 hoverLabel.autosize();
@@ -443,7 +451,10 @@ public class CircuitCanvas extends Pane {
                 hoverLabel.toFront();
             });
             icon.setOnMouseExited(e -> {
+                hoveredId = null;  // no longer hovering
                 hoverLabel.setVisible(false);
+                hoverLabel.setTranslateX(0);  // reset so the next hover is not offset
+                hoverLabel.setTranslateY(0);
             });
             if (controller.getSelection().isElementSelected(elem.getId())) {
                 icon.setEffect(new DropShadow(15, Color.CYAN));
@@ -493,6 +504,14 @@ public class CircuitCanvas extends Pane {
                         n.setTranslateY(sdy);
                     }
                 }
+
+                // Move the hover name label by the same snapped offset as the icon,
+                // so the name stays attached to the gate while it is being dragged.        
+                if (hoveredId != null && dragIds.contains(hoveredId)) {
+                    hoverLabel.setTranslateX(sdx);
+                    hoverLabel.setTranslateY(sdy);
+                }
+
                 // 2. wires: the controller re-routes the model, then calls renderWiresOnly()
                 controller.liveMove(dragIds, sdx, sdy);
             });

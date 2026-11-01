@@ -134,9 +134,11 @@ public final class ValidationErrorPanel extends VBox {
         setPrefSize(width, height);
         setMaxSize(width, height);
     }
+
+    public void setOnCleared(Runnable onCleared) {
+        this.onCleared = onCleared;
+    }
 }
 //prajw: end
 
-public void setOnCleared(Runnable onCleared) {
-    this.onCleared = onCleared;
-}
+
