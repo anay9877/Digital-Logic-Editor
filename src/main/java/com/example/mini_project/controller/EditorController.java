@@ -330,9 +330,8 @@ public class EditorController {
     //prajw: end
 
     //prajw : start
-    /** Publishes one non-validation error, such as a rejected wire connection. */
-    private void publishError(String error, Object... targets) {
-        markInvalidObjects(targets);
+    /** Publishes one non-validation error, such as a rejected wire connection. No highlighting. */
+    private void publishError(String error) {
         publishValidationErrors(List.of(error));
     }
     //prajw: end
@@ -742,7 +741,7 @@ public class EditorController {
             //prajw : start
             String error = time + " - Connection Rejected: Wire cannot end without a node/port.";
             System.err.println(error);
-            publishError(error, start);
+            publishError(error);
             //prajw: end
             dragStartPort = null;
             dragStartNode = null;
@@ -772,7 +771,7 @@ public class EditorController {
             LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
             String message = time + " - Connection Rejected: " + error;
             System.err.println(message);
-            publishError(message, start, end);
+            publishError(message);
             //prajw: end
             dragStartPort = null;
             dragStartNode = null;

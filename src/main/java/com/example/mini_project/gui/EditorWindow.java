@@ -39,6 +39,7 @@ public class EditorWindow extends Application {
         //prajw : start
         ValidationErrorPanel validationErrorPanel = new ValidationErrorPanel();
         controller.setOnValidationErrors(validationErrorPanel::appendErrors);
+        validationErrorPanel.setOnCleared(controller::clearInvalidHighlights);
         //prajw: end
         controller.setCanvas(canvas);
         canvas.setPalette(palette);

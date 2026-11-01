@@ -34,6 +34,7 @@ public final class ValidationErrorPanel extends VBox {
     private final ScrollPane scrollPane = new ScrollPane(errorList);
     private int errorCount;
     private boolean expanded;
+    private Runnable onCleared;
 
     public ValidationErrorPanel() {
         setStyle("-fx-background-color: #f4f4f4; -fx-border-color: #c8c8c8; -fx-border-width: 0 0 0 1;");
@@ -107,7 +108,8 @@ public final class ValidationErrorPanel extends VBox {
         errorCount = 0;
         title.setText("Errors (0)");
         clearButton.setDisable(true);
-        toggleButton.setTooltip(new Tooltip("Open error history (0 errors)"));
+        setExpanded(false);                         // close the box
+        if (onCleared != null) onCleared.run();     // remove the highlights
     }
     //prajw: end
 
@@ -134,3 +136,7 @@ public final class ValidationErrorPanel extends VBox {
     }
 }
 //prajw: end
+
+public void setOnCleared(Runnable onCleared) {
+    this.onCleared = onCleared;
+}
