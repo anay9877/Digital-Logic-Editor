@@ -255,6 +255,7 @@ public class EditorController {
         return circuit.removeElement(id);   // counterpart of onElementPlaced
     }
 
+    /*
     public List<CircuitElement> validateAndGetOrder(Circuit targetCircuit) {
         CircuitValidator validator = new CircuitValidator();
         boolean wiresValid = validator.validateDanglingWires(targetCircuit);
@@ -284,6 +285,40 @@ public class EditorController {
             throw ex;
         }
         //prajw: end
+    }
+    */
+
+    public List<CircuitElement> validateAndGetOrder(Circuit c) { return validateAndGetOrder(c, true); }
+
+    private List<CircuitElement> validateAndGetOrder(Circuit c, boolean report) {
+        CircuitValidator validator = new CircuitValidator();
+        boolean ok = validator.validateDanglingWires(c);
+        ok &= validator.validateInputPorts(c);
+        ok &= validator.validateInputsAndOutputs(c);
+        ok &= validator.validateDeadLogic(c);
+        ok &= validator.validateWireReferences(c);
+        ok &= validator.validateWireDrivers(c);
+        if (!ok) {
+            List<String> errors = validator.getErrors();
+            if (report) {
+                markInvalidIds(validator.getInvalidElementIds(), validator.getInvalidWireIds());
+                publishValidationErrors(errors);
+            }
+            throw new IllegalStateException(String.join(System.lineSeparator(), errors));
+        }
+        CircuitTopology topology = new CircuitTopology();
+        try {
+            List<CircuitElement> order = topology.sort(c);
+            isValidated = true;                       // moved here (see #5)
+            if (report) clearInvalidHighlights();
+            return order;
+        } catch (IllegalStateException ex) {
+            if (report) {
+                markInvalidIds(topology.getInvalidElementIds(), topology.getInvalidWireIds());
+                publishValidationErrors(List.of(ex.getMessage()));
+            }
+            throw ex;
+        }
     }
 
     //prajw : start
@@ -461,26 +496,36 @@ public class EditorController {
     public void liveMove(Collection<String> ids, double dx, double dy) {
         if (!liveMoving) return;
 
+        boolean blocked = false;
+
         List<CircuitElement> movedElements = new ArrayList<>();
         for (String id : ids) {
             CircuitElement e = circuit.getElement(id);
             if (e != null) {
-                liveMoveOrigins.putIfAbsent(id, new MoveOrigin(e, e.getX(), e.getY()));
-                double newX = CircuitCanvas.snap(e.getX() + dx);
-                double newY = CircuitCanvas.snap(e.getY() + dy);
+                MoveOrigin origin = liveMoveOrigins.computeIfAbsent(
+                        id, ignored -> new MoveOrigin(e, e.getX(), e.getY()));
+                double newX = CircuitCanvas.snap(origin.x() + dx);   // was e.getX() + dx
+                double newY = CircuitCanvas.snap(origin.y() + dy);   // was e.getY() + dy
+
+                //avoids overlapping of elements while moving
+                for (CircuitElement other : circuit.getElements().values()) {
+                    if (ids.contains(other.getId())) continue;
+                    if (isOverlapping(e, newX, newY, other, other.getX(), other.getY())) { blocked = true; break; }
+                }
+                if (blocked) continue;
+                
                 if (newX == e.getX() && newY == e.getY()) continue;
                 e.setPosition(newX, newY);
                 movedElements.add(e);
             }
         }
         if (!movedElements.isEmpty()) {
-            //prajw : start
             moveJunctionsWithMovedPorts(movedElements);
-            //prajw: end
             for (CircuitElement element : movedElements) rerouteElementWires(element);
             stopSimulation();
-            notifyRender();
+            if (canvas != null) canvas.renderWiresOnly();            // was notifyRender()
         }
+        
     }
     private Circuit getCircuitToProcess() {
         Set<String> selectedElements = selection.getSelectedElements();
