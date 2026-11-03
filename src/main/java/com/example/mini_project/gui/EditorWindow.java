@@ -63,11 +63,14 @@ public class EditorWindow extends Application {
         Scene scene = new Scene(root, 1200, 700);
         scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
             if (!e.isControlDown()) return;
-            if (e.getCode() == KeyCode.PLUS || e.getCode() == KeyCode.ADD)
+            if (e.getCode() == KeyCode.PLUS || e.getCode() == KeyCode.ADD) {
                 canvas.zoomIn();
-            else if (e.getCode() == KeyCode.SUBTRACT || e.getCode() == KeyCode.MINUS)
+                e.consume();
+            }
+            else if (e.getCode() == KeyCode.SUBTRACT || e.getCode() == KeyCode.MINUS) {
                 canvas.zoomOut();
-            e.consume();
+                e.consume();
+            }
         });
         // Removing the elements selected from the list when ESC key is pressed -> basically calls clear() method from SelectionManager
         scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
