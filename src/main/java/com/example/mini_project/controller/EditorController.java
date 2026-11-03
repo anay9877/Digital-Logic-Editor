@@ -838,21 +838,32 @@ public class EditorController {
                 // Straight: 1 new segment
                 createAndAddSegment(dragStartPort, dragStartNode, dragStartX, dragStartY, mouseX, mouseY);
             } else {
-                // Bend: 2 new segments meeting at cornerNode
-                PointNode cornerNode = new PointNode(bendX, bendY);
-                circuit.addPointNode(cornerNode);
-
-                // Leg 1: start -> cornerNode
-                WireSegment leg1;
-                if (dragStartPort != null) {
-                    leg1 = WireSegment.portToNode(dragStartPort, dragStartX, dragStartY, cornerNode);
+                // Bend: 2 new segments meeting at cornerNode.
+                // First check: does the bend point itself land on an existing wire?
+                // If so, split there and connect leg 1 directly — no leg 2 needed (avoids overlap).
+                WireSegment bendHitSeg = findWireSegmentAt(bendX, bendY);
+                if (bendHitSeg != null) {
+                    PointNode junction = circuit.splitSegmentAtJunction(bendHitSeg, bendX, bendY);
+                    WireSegment leg1 = (dragStartPort != null)
+                            ? WireSegment.portToNode(dragStartPort, dragStartX, dragStartY, junction)
+                            : WireSegment.nodeToNode(dragStartNode, junction);
+                    circuit.addWireSegment(leg1);
                 } else {
-                    leg1 = WireSegment.nodeToNode(dragStartNode, cornerNode);
-                }
-                circuit.addWireSegment(leg1);
+                    PointNode cornerNode = new PointNode(bendX, bendY);
+                    circuit.addPointNode(cornerNode);
 
-                // Leg 2: cornerNode -> (mouseX, mouseY)
-                createAndAddSegment(null, cornerNode, bendX, bendY, mouseX, mouseY);
+                    // Leg 1: start -> cornerNode
+                    WireSegment leg1;
+                    if (dragStartPort != null) {
+                        leg1 = WireSegment.portToNode(dragStartPort, dragStartX, dragStartY, cornerNode);
+                    } else {
+                        leg1 = WireSegment.nodeToNode(dragStartNode, cornerNode);
+                    }
+                    circuit.addWireSegment(leg1);
+
+                    // Leg 2: cornerNode -> (mouseX, mouseY)
+                    createAndAddSegment(null, cornerNode, bendX, bendY, mouseX, mouseY);
+                }
             }
         }
         notifyRender();

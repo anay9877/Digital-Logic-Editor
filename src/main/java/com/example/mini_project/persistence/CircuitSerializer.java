@@ -117,23 +117,147 @@ public class CircuitSerializer {
         CircuitDto dto = GSON.fromJson(json, CircuitDto.class);
         if (dto == null) return;
 
-        if (controller != null) {
-            controller.newCircuit();
-        } else {
-            circuit.clear();
-            PointNode.resetId();
-            WireSegment.resetId();
-        }
+        // Merge into the current circuit (do NOT clear it).
+        // If the incoming bounding box overlaps the existing circuit, shift it down.
+        double dy = mergeOffset(dto, circuit);
+        if (dy != 0) shiftDto(dto, dy);
+
+        // Remap all IDs so they don't collide with the existing circuit.
+        remapIds(dto, circuit);
 
         rebuildModel(dto, circuit, controller);
 
-        if (viewport != null && dto.view != null) {
-            viewport.setView(dto.view.zoom, dto.view.panX, dto.view.panY);
-        }
         if (controller != null) {
             controller.notifyRender();
-            controller.resetHistory();         // the loaded file is the new baseline
+            controller.resetHistory();
         }
+    }
+
+    /**
+     * Returns the Y offset to add to every incoming element/node so the loaded
+     * circuit clears the existing one.
+     * Returns 0 when the current circuit is empty or the bounding boxes do not clash.
+     */
+    private static double mergeOffset(CircuitDto dto, Circuit circuit) {
+        if (circuit.getElements().isEmpty() && circuit.getPointNodes().isEmpty()) return 0;
+
+        // Bottom of the existing circuit
+        double existingBottom = Double.NEGATIVE_INFINITY;
+        for (CircuitElement e : circuit.getElements().values()) {
+            existingBottom = Math.max(existingBottom, e.getY());
+        }
+        for (PointNode n : circuit.getPointNodes()) {
+            existingBottom = Math.max(existingBottom, n.getY());
+        }
+        if (existingBottom == Double.NEGATIVE_INFINITY) existingBottom = 0;
+
+        // Top of the incoming circuit
+        double incomingTop = Double.POSITIVE_INFINITY;
+        if (dto.elements != null) {
+            for (CircuitDto.ElementDto ed : dto.elements) incomingTop = Math.min(incomingTop, ed.y);
+        }
+        if (dto.nodes != null) {
+            for (CircuitDto.NodeDto nd : dto.nodes) incomingTop = Math.min(incomingTop, nd.y);
+        }
+        if (incomingTop == Double.POSITIVE_INFINITY) incomingTop = 0;
+
+        // No overlap: incoming already sits below the existing circuit
+        final double BUFFER = 80.0; // 4 grid cells
+        double needed = existingBottom + BUFFER - incomingTop;
+        if (needed <= 0) return 0;
+
+        // Snap to grid
+        double gridSize = 20.0;
+        return Math.ceil(needed / gridSize) * gridSize;
+    }
+
+    /** Shifts every element position and node position in the DTO by dy. */
+    private static void shiftDto(CircuitDto dto, double dy) {
+        if (dto.elements != null) {
+            for (CircuitDto.ElementDto ed : dto.elements) ed.y += dy;
+        }
+        if (dto.nodes != null) {
+            for (CircuitDto.NodeDto nd : dto.nodes) nd.y += dy;
+        }
+    }
+
+    /**
+     * Rewrites every id and cross-reference in the DTO so that none clash with
+     * IDs already present in {@code circuit}.
+     *
+     * Strategy: for each prefix ("AND", "OR", "node", "wire", …) find the
+     * highest N already used, then assign new IDs starting at max+1.
+     */
+    private static void remapIds(CircuitDto dto, Circuit circuit) {
+        // 1. Build max-N map from the existing circuit.
+        Map<String, Integer> maxByPrefix = new HashMap<>();
+        for (String id : circuit.getElements().keySet()) {
+            bumpMax(maxByPrefix, id);
+        }
+        for (PointNode n : circuit.getPointNodes()) {
+            bumpMax(maxByPrefix, n.getId());
+        }
+        for (WireSegment w : circuit.getWireSegments()) {
+            bumpMax(maxByPrefix, w.getId());
+        }
+
+        // 2. Assign new IDs to incoming elements / nodes / wires.
+        Map<String, String> elemRemap = new HashMap<>();
+        if (dto.elements != null) {
+            for (CircuitDto.ElementDto ed : dto.elements) {
+                String prefix = idPrefix(ed.id);
+                int next = maxByPrefix.getOrDefault(prefix, 0) + 1;
+                maxByPrefix.put(prefix, next);
+                String newId = prefix + "-" + next;
+                elemRemap.put(ed.id, newId);
+                ed.id = newId;
+            }
+        }
+
+        Map<String, String> nodeRemap = new HashMap<>();
+        if (dto.nodes != null) {
+            for (CircuitDto.NodeDto nd : dto.nodes) {
+                String prefix = idPrefix(nd.id);
+                int next = maxByPrefix.getOrDefault(prefix, 0) + 1;
+                maxByPrefix.put(prefix, next);
+                String newId = prefix + "-" + next;
+                nodeRemap.put(nd.id, newId);
+                nd.id = newId;
+            }
+        }
+
+        if (dto.wires != null) {
+            for (CircuitDto.WireDto wd : dto.wires) {
+                // Remap wire id
+                String prefix = idPrefix(wd.id);
+                int next = maxByPrefix.getOrDefault(prefix, 0) + 1;
+                maxByPrefix.put(prefix, next);
+                wd.id = prefix + "-" + next;
+
+                // Remap endpoint references
+                if (wd.from != null) {
+                    if (wd.from.element != null) wd.from.element = elemRemap.getOrDefault(wd.from.element, wd.from.element);
+                    if (wd.from.node   != null) wd.from.node    = nodeRemap.getOrDefault(wd.from.node,   wd.from.node);
+                }
+                if (wd.to != null) {
+                    if (wd.to.element != null) wd.to.element = elemRemap.getOrDefault(wd.to.element, wd.to.element);
+                    if (wd.to.node   != null) wd.to.node    = nodeRemap.getOrDefault(wd.to.node,   wd.to.node);
+                }
+            }
+        }
+    }
+
+    /** Extracts the prefix of an ID like "AND-3" → "AND", "node-5" → "node". */
+    private static String idPrefix(String id) {
+        int i = id.lastIndexOf('-');
+        return i > 0 ? id.substring(0, i) : id;
+    }
+
+    /** Bumps the max counter for the prefix of {@code id} in {@code map}. */
+    private static void bumpMax(Map<String, Integer> map, String id) {
+        String prefix = idPrefix(id);
+        int n = parseIdNumber(id);
+        map.put(prefix, Math.max(map.getOrDefault(prefix, 0), n));
     }
 
     private static void rebuildModel(CircuitDto dto, Circuit circuit, EditorController controller) {

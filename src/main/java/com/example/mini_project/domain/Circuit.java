@@ -54,35 +54,26 @@ public class Circuit {
     }
 
     public boolean removeElement(String id) {
-        if (elements.remove(id) == null) return false;        // unknown or already deleted
 
-        // 1. Seeds: wires whose start/end PORT belongs to the removed element
-        Set<WireSegment> doomed = new HashSet<>();
-        Deque<WireSegment> queue = new ArrayDeque<>();
+        if (!elements.containsKey(id)) return false;
+
+        // Find all wire segments directly connected to this gate
+        Set<String> attachedWireIds = new HashSet<>();
+
         for (WireSegment seg : wireSegments) {
-            if (belongsTo(seg.getStartPort(), id) || belongsTo(seg.getEndPort(), id)) {
-                if (doomed.add(seg)) queue.add(seg);
+            if (belongsTo(seg.getStartPort(), id) ||
+                    belongsTo(seg.getEndPort(), id)) {
+
+                attachedWireIds.add(seg.getId());
             }
         }
 
-        // 2. BFS: spread through PointNodes to every connected segment
-        while (!queue.isEmpty()) {
-            WireSegment s = queue.poll();
-            for (PointNode n : new PointNode[]{s.getStartNode(), s.getEndNode()}) {
-                if (n == null) continue;                       // that end is a Port, so the search stops there
-                for (WireSegment next : n.getConnectedSegments()) {
-                    if (doomed.add(next)) queue.add(next);     // add() is false if already visited
-                }
-            }
-        }
+        // Delete those wires using the existing wire deletion logic
+        removeWireSegments(attachedWireIds);
 
-        // 3. Delete everything found, then fix the nodes' bookkeeping
-        wireSegments.removeAll(doomed);
-        for (WireSegment s : doomed) {
-            if (s.getStartNode() != null) s.getStartNode().removeSegment(s);
-            if (s.getEndNode() != null) s.getEndNode().removeSegment(s);
-        }
-        pointNodes.removeIf(n -> n.getConnectedSegments().isEmpty());
+        // Finally delete the gate
+        elements.remove(id);
+
         return true;
     }
 
