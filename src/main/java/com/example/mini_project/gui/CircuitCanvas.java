@@ -437,16 +437,16 @@ public class CircuitCanvas extends Pane {
             icon.setUserData(elem.getId());
             icon.setPickOnBounds(true);
             icon.setOnMouseEntered(e -> {
-                hoveredId = elem.getId();  // remember who is hovered
-                hoverLabel.setTranslateX(0); // start from the gate's real position
-                hoverLabel.setTranslateY(0);
+                hoveredId = elem.getId();
                 hoverLabel.setText(elem.getId());
                 hoverLabel.applyCss();
                 hoverLabel.autosize();
-                double componentWidth = elem instanceof Gate ? 128 : 64;
-                double labelX = elem.getX() + (componentWidth - hoverLabel.getWidth()) / 2;
-                double labelY = elem.getY() - hoverLabel.getHeight() / 3;
+                double componentWidth = elem instanceof Gate ? 128 : elem instanceof InputElement ? 80 : 64;
+                double labelX = icon.getLayoutX() + (componentWidth - hoverLabel.getWidth()) / 2;
+                double labelY = icon.getLayoutY() - hoverLabel.getHeight() / 3;
                 hoverLabel.relocate(labelX, labelY);
+                hoverLabel.setTranslateX(icon.getTranslateX());
+                hoverLabel.setTranslateY(icon.getTranslateY());
                 hoverLabel.setVisible(true);
                 hoverLabel.toFront();
             });
