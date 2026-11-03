@@ -565,9 +565,14 @@ public class CircuitCanvas extends Pane {
 
     private void renderPorts() {
         Circuit circuit = controller.getCircuit();
+        Set<String> invalidElementIds = controller.getInvalidElementIds();
+        Set<Port> invalidPorts = controller.getInvalidPorts();
         for (CircuitElement elem : circuit.getElements().values()) {
             List<Port> ports = getAllPorts(elem);
             for (Port port : ports) {
+                boolean invalidPort = port.getOwner() == elem
+                        && invalidElementIds.contains(elem.getId())
+                        && invalidPorts.contains(port);
                 double cx = port.getAbsX();
                 double cy = port.getAbsY();
 
@@ -576,8 +581,7 @@ public class CircuitCanvas extends Pane {
                 dot.setStroke(Color.BLACK);
                 dot.setStrokeWidth(0.5);
                 dot.setUserData(elem.getId());
-                if (controller.getInvalidElementIds().contains(elem.getId())) {
-                    //highlight validation errored elems
+                if (invalidPort) {
                     dot.setFill(COLOR_ERROR);
                     dot.setStroke(Color.RED);
                 }
@@ -587,7 +591,8 @@ public class CircuitCanvas extends Pane {
                     dot.setRadius(PORT_RADIUS + 2);
                 });
                 dot.setOnMouseExited(e -> {
-                    dot.setFill(COLOR_PORT_IDLE);
+                    dot.setFill(invalidPort ? COLOR_ERROR : COLOR_PORT_IDLE);
+                    dot.setStroke(invalidPort ? Color.RED : Color.BLACK);
                     dot.setRadius(PORT_RADIUS);
                 });
                 dot.setOnMousePressed(ev -> {

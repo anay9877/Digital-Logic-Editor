@@ -8,6 +8,7 @@ public class CircuitValidator {
     private final List<String> errors = new ArrayList<>();
     private final Set<String> invalidElementIds = new HashSet<>();
     private final Set<String> invalidWireIds = new HashSet<>();
+    private final Set<Port> invalidPorts = new HashSet<>();
 
     /** Returns a snapshot of every validation error found by this validator. */
     public List<String> getErrors() {
@@ -22,6 +23,10 @@ public class CircuitValidator {
         return Set.copyOf(invalidWireIds);
     }
 
+    public Set<Port> getInvalidPorts() {
+        return Set.copyOf(invalidPorts);
+    }
+
     // Centralizes validation messages so the editor can display them together.
     //highlight validation errored elems
     private void reportError(String message, Object... targets) {
@@ -29,6 +34,7 @@ public class CircuitValidator {
         for (Object target : targets) {
             if (target instanceof Port port) {
                 invalidElementIds.add(port.getOwner().getId());
+                invalidPorts.add(port);
             } else if (target instanceof CircuitElement element) {
                 invalidElementIds.add(element.getId());
             } else if (target instanceof WireSegment wire) {
@@ -43,7 +49,7 @@ public class CircuitValidator {
 
     private void reportSubCircuitError(String message, SubCircuit subCircuit) {
         reportError(message);
-        invalidElementIds.addAll(subCircuit.getgates().keySet());
+        /* invalidElementIds.addAll(subCircuit.getgates().keySet());
         for (InputElement input : subCircuit.getInputs()) {
             invalidElementIds.add(input.getId());
         }
@@ -52,7 +58,7 @@ public class CircuitValidator {
         }
         for (WireSegment wire : subCircuit.getWireSegments()) {
             invalidWireIds.add(wire.getId());
-        }
+        }*/
     }
     //prajw: end
 
@@ -100,7 +106,7 @@ public class CircuitValidator {
                     if (!isPortConnected(circuit, port)) {
                         LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
                         System.err.println(time + " - Validation Error: Gate " + gate.getId() + " is not connected at input: " + port.getId());
-                        reportError("Validation Error: Gate " + gate.getId() + " is not connected at input: " + port.getId(), gate);
+                        reportError("Validation Error: Gate " + gate.getId() + " is not connected at input: " + port.getId(), port);
                         valid = false;
                     }
                 }
@@ -109,13 +115,32 @@ public class CircuitValidator {
                 if (!isPortConnected(circuit, port)) {
                     LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
                     System.err.println("VALIDATION ERROR: LED " + led.getId() + " has an unconnected input");
-                    reportError("VALIDATION ERROR: LED " + led.getId() + " has an unconnected input", led);
+                    reportError("VALIDATION ERROR: LED " + led.getId() + " has an unconnected input", port);
                     valid = false;
                 }
             }
         }
         return valid;
     }
+
+    public boolean validateOutputPorts(Circuit circuit) {
+        boolean valid = true;
+        for (CircuitElement element : circuit.getElements().values()) {
+            if (!(element instanceof Gate gate)) continue;
+
+            Port output = gate.getOutputPort();
+            if (!isPortConnected(circuit, output)) {
+                LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+                String message = "VALIDATION ERROR: Gate " + gate.getId()
+                        + " has an unconnected output: " + output.getId();
+                System.err.println(time + " - " + message);
+                reportError(message, output);
+                valid = false;
+            }
+        }
+        return valid;
+    }
+
     private boolean isPortConnected(Circuit circuit, Port port) {
         for (WireSegment wire : circuit.getWireSegments()) {
             if (wire.getStartPort() == port || wire.getEndPort() == port) {
@@ -125,26 +150,34 @@ public class CircuitValidator {
         return false;
     }
     public boolean validateInputsAndOutputs(Circuit circuit) {
-        boolean valid = true;
         if (circuit.getElements().isEmpty()) {
             LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
             System.err.println(time + " - Validation Error: Circuit is empty.");
             reportError("VALIDATION ERROR: Circuit is empty.");
             return false;
         }
-        for (SubCircuit subCircuit : circuit.splitIntoDisjointSubCircuits()) {
-            if (subCircuit.getInputs().isEmpty()) {
-                LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
-                System.err.println(time + " - Validation Error: " + subCircuit.getId() + " needs atleast one input switch.");
-                reportSubCircuitError("VALIDATION ERROR: " + subCircuit.getId() + " has no input switch.", subCircuit);
-                valid = false;
-            }
-            if (subCircuit.getOutputs().isEmpty()) {
-                LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
-                System.err.println(time + " - Validation Error: " + subCircuit.getId() + " needs atleast one LED.");
-                reportSubCircuitError("VALIDATION ERROR: " + subCircuit.getId() + " has no output LED.", subCircuit);
-                valid = false;
-            }
+
+        boolean hasInput = false;
+        boolean hasOutput = false;
+        for (CircuitElement element : circuit.getElements().values()) {
+            hasInput |= element instanceof InputElement;
+            hasOutput |= element instanceof OutputElement;
+        }
+
+        boolean valid = true;
+        if (!hasInput) {
+            LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+            String message = "VALIDATION ERROR: Circuit has no input switch.";
+            System.err.println(time + " - " + message);
+            reportError(message);
+            valid = false;
+        }
+        if (!hasOutput) {
+            LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+            String message = "VALIDATION ERROR: Circuit has no output LED.";
+            System.err.println(time + " - " + message);
+            reportError(message);
+            valid = false;
         }
         return valid;
     }
@@ -205,9 +238,24 @@ public class CircuitValidator {
                 }
             }
         }
+                
+        // prajwal : start -> each of their gates and switches as dead logic.
+        Set<String> ledlessIds = new HashSet<>();
+        for (SubCircuit sub : circuit.splitIntoDisjointSubCircuits()) {
+            if (sub.getOutputs().isEmpty()) {
+                ledlessIds.addAll(sub.getgates().keySet());
+                for (InputElement in : sub.getInputs()) {
+                    ledlessIds.add(in.getId());
+                }
+            }
+        }
+        //prajw : end -> 
+        // Subcircuits with no LED already get a "no LED" error. Don't also flag
         boolean valid = true;
         for (CircuitElement element : circuit.getElements().values()) {
-            if ((element instanceof Gate || element instanceof InputElement) && !useful.contains(element)) {
+            if ((element instanceof Gate || element instanceof InputElement)
+                    && !useful.contains(element)
+                    && !ledlessIds.contains(element.getId())) {
                 LocalTime time = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
                 System.err.println(time + " - Validation Error: " + element.getId() + " has no connection to any LED.");
                 reportError("VALIDATION ERROR: " + element.getId() + " does not contribute to any LED.", element);
