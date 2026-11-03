@@ -135,7 +135,8 @@ public class EditorController {
     //prajw: end
 
     private double getElementSize(CircuitElement element) {
-        if (element instanceof Gate) return 128;
+        if (element instanceof Gate) return 112;
+        if (element instanceof InputElement) return 88;
         return 64;
     }
 

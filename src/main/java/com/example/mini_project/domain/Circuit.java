@@ -2,8 +2,6 @@ package com.example.mini_project.domain;
 
 import com.example.mini_project.gui.CircuitCanvas;
 
-import com.example.mini_project.gui.CircuitCanvas;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
