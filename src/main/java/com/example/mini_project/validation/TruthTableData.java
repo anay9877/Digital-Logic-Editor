@@ -59,4 +59,8 @@ public final class TruthTableData {
         if (!m.matches()) return id;
         return (m.group(1).equalsIgnoreCase("SWITCH") ? "S" : "L") + m.group(2);
     }
+
+    public TruthTableData withCurrentRow(int row) {
+        return new TruthTableData(inputIds, outputIds, rows, row);
+    }
 }

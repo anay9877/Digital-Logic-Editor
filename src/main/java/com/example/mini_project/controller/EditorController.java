@@ -49,7 +49,8 @@ public class EditorController {
     
     private boolean liveMoving =  false;
 
-    private CircuitSimulator simulator;
+    private CompiledCircuit compiled;
+    private final Map<Long, TruthTableData> tableCache = new HashMap<>();
     private boolean simulating = false;
     private boolean isValidated = false;
     //prajw : start
@@ -171,6 +172,8 @@ public class EditorController {
         if (canvas != null && canvas.getViewportManager() != null) {
             canvas.getViewportManager().resetView();
         }
+        compiled = null;
+        tableCache.clear();
         stopSimulation();
         notifyRender();
     }
@@ -203,6 +206,7 @@ public class EditorController {
     public void toggleInput(InputElement input) {
         SignalState before = input.getValue();
         input.toggle();
+        if (compiled != null && compiled.matches(circuit)) compiled.update(input);
         notifyRender();
         history.record(new ToggleInputCommand(input, before, input.getValue()));
     }
@@ -338,17 +342,22 @@ public class EditorController {
 
     public void runSimulation() {
         try {
-            Circuit targetCircuit = getCircuitToProcess();
-            List<CircuitElement> order = validateAndGetOrder(targetCircuit);
-            simulator = new CircuitSimulator(targetCircuit, order);
+            Circuit target = getCircuitToProcess();
+            if (target == circuit) ensureCompiled();
+            else CompiledCircuit.compile(target, validateAndGetOrder(target)).evaluateAll();
             simulating = true;
-            printLedOutputs(order);
-            notifyRender();                      // no pause, no window
+            notifyRender();
         } catch (IllegalStateException ex) {
             System.err.println("Cannot simulate: " + ex.getMessage());
             simulating = false;
-            simulator = null;
         }
+    }
+
+    private void ensureCompiled() {
+        if (compiled != null && compiled.matches(circuit)) return;   // nothing structural changed
+        compiled = null;
+        compiled = CompiledCircuit.compile(circuit, validateAndGetOrder(circuit));
+        compiled.evaluateAll();
     }
 
     public void showTruthTable() {
@@ -362,7 +371,7 @@ public class EditorController {
 
         // keep the canvas live (switch toggles update LEDs) when the whole canvas is valid
         try {
-            simulator = new CircuitSimulator(circuit, validateAndGetOrder(circuit));
+            ensureCompiled();
             simulating = true;
         } catch (IllegalStateException ex) {
             stopSimulation();      // some circuit is unfinished; press Simulate once it is complete
@@ -381,6 +390,7 @@ public class EditorController {
                 .thenComparingDouble(s -> elementsOf(s).stream().mapToDouble(CircuitElement::getX).min().orElse(0)));
 
         List<SubCircuitTable> result = new ArrayList<>();
+        Map<Long, TruthTableData> newCache = new HashMap<>();
         int n = 0;
         for (SubCircuit sub : subs) {
             n++;
@@ -388,16 +398,24 @@ public class EditorController {
             List<String> elementIds = elementsOf(sub).stream().map(CircuitElement::getId).toList();
             List<String> wireIds = sub.getWireSegments().stream().map(WireSegment::getId).toList();
 
-            TruthTableData data = null;
+            long key = CompiledCircuit.fingerprint(part);
+            TruthTableData data = tableCache.get(key);
             String error = null;
-            try {
-                data = TruthTableGenerator.generate(part, validateAndGetOrder(part));
-            } catch (IllegalStateException ex) {
-                error = ex.getMessage();
+            if (data != null) {
+                data = data.withCurrentRow(TruthTableGenerator.currentRow(part));   // unchanged circuit: reuse
+            } else {
+                try {
+                    data = TruthTableGenerator.generate(part, validateAndGetOrder(part));
+                } catch (IllegalStateException ex) {
+                    error = ex.getMessage();
+                }
             }
+            if (data != null) newCache.put(key, data);
             result.add(new SubCircuitTable("Circuit " + n, sub.getInputs().size(), sub.getOutputs().size(),
                     elementIds, wireIds, data, error));
         }
+        tableCache.clear();
+        tableCache.putAll(newCache);
         return result;
     }
 
@@ -434,7 +452,6 @@ public class EditorController {
 
     private void stopSimulation() {
         simulating = false;
-        simulator = null;
     }
 
     private void handleValidate() {
@@ -1326,6 +1343,7 @@ public class EditorController {
         dragStartSegment = null;
         selection.clear();
         circuit.resetSignals();
+        compiled = null;
         stopSimulation();
         notifyRender();
     }

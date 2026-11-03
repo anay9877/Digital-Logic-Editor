@@ -25,70 +25,15 @@ public class TruthTableGenerator {
 
     /** @throws IllegalStateException with a user-friendly message if no table can be built. */
     public static TruthTableData generate(Circuit circuit, List<CircuitElement> topoOrder) {
+        return CompiledCircuit.compile(circuit, topoOrder).truthTable();   // bit-parallel, leaves switches untouched
+    }
+
+    /** Row number matching the switches' current positions (bit i = i-th switch in natural order). */
+    public static int currentRow(Circuit circuit) {
         List<InputElement> inputs = circuit.getElements().values().stream()
-                .filter(InputElement.class::isInstance)
-                .map(InputElement.class::cast)
-                .sorted(Comparator.comparing(CircuitElement::getId, TruthTableGenerator::naturalCompare))
-                .toList();
-
-        List<OutputElement> outputs = circuit.getElements().values().stream()
-                .filter(OutputElement.class::isInstance)
-                .map(OutputElement.class::cast)
-                .sorted(Comparator.comparing(CircuitElement::getId, TruthTableGenerator::naturalCompare))
-                .toList();
-
-        if (inputs.isEmpty()) {
-            throw new IllegalStateException("Truth table unavailable: no input switches were found in the circuit.");
-        }
-        if (outputs.isEmpty()) {
-            throw new IllegalStateException("Truth table unavailable: no output LEDs were found in the circuit.");
-        }
-        if (inputs.size() > MAX_INPUTS) {
-            throw new IllegalStateException("Truth table unavailable: " + inputs.size()
-                    + " switches would need " + (1L << inputs.size()) + " rows (limit is " + MAX_INPUTS + " switches).");
-        }
-
-        // remember the switch positions so we can put them back
-        List<SignalState> originalStates = new ArrayList<>();
-        int currentRow = 0;
-        for (int bit = 0; bit < inputs.size(); bit++) {
-            SignalState s = inputs.get(bit).getValue();
-            originalStates.add(s);
-            if (s == SignalState.ON) currentRow |= (1 << bit);
-        }
-
-        CircuitSimulator simulator = new CircuitSimulator(circuit, topoOrder);
-        List<TruthTableData.Row> rows = new ArrayList<>();
-        int rowCount = 1 << inputs.size();
-
-        try {
-            for (int row = 0; row < rowCount; row++) {
-                boolean[] in = new boolean[inputs.size()];
-                for (int bit = 0; bit < inputs.size(); bit++) {
-                    in[bit] = ((row >> bit) & 1) == 1;
-                    inputs.get(bit).setValue(in[bit] ? SignalState.ON : SignalState.OFF);
-                }
-
-                simulator.simulate();
-
-                boolean[] out = new boolean[outputs.size()];
-                for (int i = 0; i < outputs.size(); i++) {
-                    out[i] = outputs.get(i).getValue() == SignalState.ON;
-                }
-                rows.add(new TruthTableData.Row(row, in, out));
-            }
-        } finally {
-            for (int i = 0; i < inputs.size(); i++) {
-                inputs.get(i).setValue(originalStates.get(i));
-            }
-            simulator.simulate();
-        }
-
-        return new TruthTableData(
-                inputs.stream().map(CircuitElement::getId).toList(),
-                outputs.stream().map(CircuitElement::getId).toList(),
-                rows,
-                currentRow);
+                .filter(InputElement.class::isInstance).map(InputElement.class::cast)
+                .sorted(Comparator.comparing(CircuitElement::getId, TruthTableGenerator::naturalCompare)).toList();
+        return CompiledCircuit.currentRow(inputs);
     }
 
     /** "SWITCH-2" sorts before "SWITCH-10". */
