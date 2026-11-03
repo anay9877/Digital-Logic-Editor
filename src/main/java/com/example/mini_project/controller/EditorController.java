@@ -57,6 +57,7 @@ public class EditorController {
     private Consumer<List<String>> onValidationErrors;
     private final Set<String> invalidElementIds = new HashSet<>();
     private final Set<String> invalidWireIds = new HashSet<>();
+    private final Set<Port> invalidPorts = new HashSet<>();
     // highlight validation errored elems
     //prajw: end
 
@@ -98,18 +99,32 @@ public class EditorController {
         return Set.copyOf(invalidWireIds);
     }
 
+    public Set<Port> getInvalidPorts() {
+        return Set.copyOf(invalidPorts);
+    }
+
     public void clearInvalidHighlights() {
         invalidElementIds.clear();
         invalidWireIds.clear();
+        invalidPorts.clear();
         notifyRender();
     }
 
     //highlight validation errored elems
-    private void markInvalidIds(Collection<String> elementIds, Collection<String> wireIds) {
+    private void markInvalidIds(Collection<String> elementIds, Collection<String> wireIds,
+                                Collection<Port> ports) {
         invalidElementIds.clear();
         invalidWireIds.clear();
+        invalidPorts.clear();
         invalidElementIds.addAll(elementIds);
         invalidWireIds.addAll(wireIds);
+        for (Port port : ports) {
+            String ownerId = port.getOwner().getId();
+            if (invalidElementIds.contains(ownerId)
+                    && circuit.getElement(ownerId) == port.getOwner()) {
+                invalidPorts.add(port);
+            }
+        }
         notifyRender();
     }
 
@@ -299,14 +314,16 @@ public class EditorController {
         CircuitValidator validator = new CircuitValidator();
         boolean ok = validator.validateDanglingWires(c);
         ok &= validator.validateInputPorts(c);
+        ok &= validator.validateOutputPorts(c);
         ok &= validator.validateInputsAndOutputs(c);
-        ok &= validator.validateDeadLogic(c);
+        // Disabled: validation requires connected gate outputs, not that every gate contributes to an LED.
         ok &= validator.validateWireReferences(c);
         ok &= validator.validateWireDrivers(c);
         if (!ok) {
             List<String> errors = validator.getErrors();
             if (report) {
-                markInvalidIds(validator.getInvalidElementIds(), validator.getInvalidWireIds());
+                markInvalidIds(validator.getInvalidElementIds(), validator.getInvalidWireIds(),
+                        validator.getInvalidPorts());
                 publishValidationErrors(errors);
             }
             throw new IllegalStateException(String.join(System.lineSeparator(), errors));
@@ -319,7 +336,7 @@ public class EditorController {
             return order;
         } catch (IllegalStateException ex) {
             if (report) {
-                markInvalidIds(topology.getInvalidElementIds(), topology.getInvalidWireIds());
+                markInvalidIds(topology.getInvalidElementIds(), topology.getInvalidWireIds(), Set.of());
                 publishValidationErrors(List.of(ex.getMessage()));
             }
             throw ex;
