@@ -1,0 +1,678 @@
+{
+  "format": "digital-logic-editor",
+  "elements": [
+    {
+      "id": "AND-1",
+      "type": "AND",
+      "x": 80.0,
+      "y": 60.0
+    },
+    {
+      "id": "AND-2",
+      "type": "AND",
+      "x": 300.0,
+      "y": 740.0
+    },
+    {
+      "id": "LED-2",
+      "type": "LED",
+      "x": 1040.0,
+      "y": 440.0
+    },
+    {
+      "id": "NAND-1",
+      "type": "NAND",
+      "x": 80.0,
+      "y": 660.0
+    },
+    {
+      "id": "NAND-3",
+      "type": "NAND",
+      "x": 520.0,
+      "y": 300.0
+    },
+    {
+      "id": "NOR-1",
+      "type": "NOR",
+      "x": 80.0,
+      "y": 840.0
+    },
+    {
+      "id": "NOT-1",
+      "type": "NOT",
+      "x": 280.0,
+      "y": 440.0
+    },
+    {
+      "id": "NOT-4",
+      "type": "NOT",
+      "x": 520.0,
+      "y": 600.0
+    },
+    {
+      "id": "OR-1",
+      "type": "OR",
+      "x": 80.0,
+      "y": 240.0
+    },
+    {
+      "id": "OR-4",
+      "type": "OR",
+      "x": 760.0,
+      "y": 440.0
+    },
+    {
+      "id": "SWITCH-1",
+      "type": "SWITCH",
+      "x": -60.0,
+      "y": 20.0,
+      "props": {
+        "state": "OFF"
+      }
+    },
+    {
+      "id": "SWITCH-10",
+      "type": "SWITCH",
+      "x": -60.0,
+      "y": 920.0,
+      "props": {
+        "state": "OFF"
+      }
+    },
+    {
+      "id": "SWITCH-2",
+      "type": "SWITCH",
+      "x": -60.0,
+      "y": 120.0,
+      "props": {
+        "state": "OFF"
+      }
+    },
+    {
+      "id": "SWITCH-3",
+      "type": "SWITCH",
+      "x": -60.0,
+      "y": 220.0,
+      "props": {
+        "state": "OFF"
+      }
+    },
+    {
+      "id": "SWITCH-4",
+      "type": "SWITCH",
+      "x": -60.0,
+      "y": 320.0,
+      "props": {
+        "state": "OFF"
+      }
+    },
+    {
+      "id": "SWITCH-5",
+      "type": "SWITCH",
+      "x": -60.0,
+      "y": 420.0,
+      "props": {
+        "state": "OFF"
+      }
+    },
+    {
+      "id": "SWITCH-6",
+      "type": "SWITCH",
+      "x": -60.0,
+      "y": 520.0,
+      "props": {
+        "state": "OFF"
+      }
+    },
+    {
+      "id": "SWITCH-7",
+      "type": "SWITCH",
+      "x": -60.0,
+      "y": 620.0,
+      "props": {
+        "state": "OFF"
+      }
+    },
+    {
+      "id": "SWITCH-8",
+      "type": "SWITCH",
+      "x": -60.0,
+      "y": 720.0,
+      "props": {
+        "state": "OFF"
+      }
+    },
+    {
+      "id": "SWITCH-9",
+      "type": "SWITCH",
+      "x": -60.0,
+      "y": 820.0,
+      "props": {
+        "state": "OFF"
+      }
+    },
+    {
+      "id": "XOR-1",
+      "type": "XOR",
+      "x": 80.0,
+      "y": 440.0
+    },
+    {
+      "id": "XOR-2",
+      "type": "XOR",
+      "x": 320.0,
+      "y": 160.0
+    }
+  ],
+  "nodes": [
+    {
+      "id": "node-1",
+      "x": 80.0,
+      "y": 60.0
+    },
+    {
+      "id": "node-10",
+      "x": 80.0,
+      "y": 660.0
+    },
+    {
+      "id": "node-11",
+      "x": 80.0,
+      "y": 760.0
+    },
+    {
+      "id": "node-12",
+      "x": 80.0,
+      "y": 860.0
+    },
+    {
+      "id": "node-13",
+      "x": 80.0,
+      "y": 960.0
+    },
+    {
+      "id": "node-16",
+      "x": 300.0,
+      "y": 720.0
+    },
+    {
+      "id": "node-17",
+      "x": 300.0,
+      "y": 900.0
+    },
+    {
+      "id": "node-2",
+      "x": 80.0,
+      "y": 160.0
+    },
+    {
+      "id": "node-25",
+      "x": 1060.0,
+      "y": 660.0
+    },
+    {
+      "id": "node-273",
+      "x": 320.0,
+      "y": 120.0
+    },
+    {
+      "id": "node-274",
+      "x": 320.0,
+      "y": 300.0
+    },
+    {
+      "id": "node-275",
+      "x": 520.0,
+      "y": 220.0
+    },
+    {
+      "id": "node-276",
+      "x": 520.0,
+      "y": 500.0
+    },
+    {
+      "id": "node-277",
+      "x": 420.0,
+      "y": 660.0
+    },
+    {
+      "id": "node-278",
+      "x": 760.0,
+      "y": 360.0
+    },
+    {
+      "id": "node-279",
+      "x": 760.0,
+      "y": 660.0
+    },
+    {
+      "id": "node-4",
+      "x": 80.0,
+      "y": 260.0
+    },
+    {
+      "id": "node-7",
+      "x": 80.0,
+      "y": 360.0
+    },
+    {
+      "id": "node-8",
+      "x": 80.0,
+      "y": 460.0
+    },
+    {
+      "id": "node-9",
+      "x": 80.0,
+      "y": 560.0
+    }
+  ],
+  "wires": [
+    {
+      "id": "wire-1",
+      "from": {
+        "element": "SWITCH-1",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-1"
+      }
+    },
+    {
+      "id": "wire-13",
+      "from": {
+        "element": "SWITCH-4",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-7"
+      }
+    },
+    {
+      "id": "wire-14",
+      "from": {
+        "node": "node-7"
+      },
+      "to": {
+        "element": "OR-1",
+        "port": "in1"
+      }
+    },
+    {
+      "id": "wire-15",
+      "from": {
+        "element": "SWITCH-5",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-8"
+      }
+    },
+    {
+      "id": "wire-16",
+      "from": {
+        "node": "node-8"
+      },
+      "to": {
+        "element": "XOR-1",
+        "port": "in0"
+      }
+    },
+    {
+      "id": "wire-17",
+      "from": {
+        "element": "SWITCH-6",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-9"
+      }
+    },
+    {
+      "id": "wire-18",
+      "from": {
+        "node": "node-9"
+      },
+      "to": {
+        "element": "XOR-1",
+        "port": "in1"
+      }
+    },
+    {
+      "id": "wire-19",
+      "from": {
+        "element": "SWITCH-7",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-10"
+      }
+    },
+    {
+      "id": "wire-2",
+      "from": {
+        "node": "node-1"
+      },
+      "to": {
+        "element": "AND-1",
+        "port": "in0"
+      }
+    },
+    {
+      "id": "wire-20",
+      "from": {
+        "node": "node-10"
+      },
+      "to": {
+        "element": "NAND-1",
+        "port": "in0"
+      }
+    },
+    {
+      "id": "wire-21",
+      "from": {
+        "element": "SWITCH-8",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-11"
+      }
+    },
+    {
+      "id": "wire-22",
+      "from": {
+        "node": "node-11"
+      },
+      "to": {
+        "element": "NAND-1",
+        "port": "in1"
+      }
+    },
+    {
+      "id": "wire-23",
+      "from": {
+        "element": "SWITCH-9",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-12"
+      }
+    },
+    {
+      "id": "wire-24",
+      "from": {
+        "node": "node-12"
+      },
+      "to": {
+        "element": "NOR-1",
+        "port": "in0"
+      }
+    },
+    {
+      "id": "wire-25",
+      "from": {
+        "element": "SWITCH-10",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-13"
+      }
+    },
+    {
+      "id": "wire-26",
+      "from": {
+        "node": "node-13"
+      },
+      "to": {
+        "element": "NOR-1",
+        "port": "in1"
+      }
+    },
+    {
+      "id": "wire-298",
+      "from": {
+        "element": "AND-1",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-273"
+      }
+    },
+    {
+      "id": "wire-299",
+      "from": {
+        "node": "node-273"
+      },
+      "to": {
+        "element": "XOR-2",
+        "port": "in0"
+      }
+    },
+    {
+      "id": "wire-3",
+      "from": {
+        "element": "SWITCH-2",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-2"
+      }
+    },
+    {
+      "id": "wire-300",
+      "from": {
+        "element": "OR-1",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-274"
+      }
+    },
+    {
+      "id": "wire-301",
+      "from": {
+        "node": "node-274"
+      },
+      "to": {
+        "element": "XOR-2",
+        "port": "in1"
+      }
+    },
+    {
+      "id": "wire-302",
+      "from": {
+        "element": "XOR-2",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-275"
+      }
+    },
+    {
+      "id": "wire-303",
+      "from": {
+        "node": "node-275"
+      },
+      "to": {
+        "element": "NAND-3",
+        "port": "in0"
+      }
+    },
+    {
+      "id": "wire-304",
+      "from": {
+        "element": "NOT-1",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-276"
+      }
+    },
+    {
+      "id": "wire-305",
+      "from": {
+        "node": "node-276"
+      },
+      "to": {
+        "element": "NAND-3",
+        "port": "in1"
+      }
+    },
+    {
+      "id": "wire-306",
+      "from": {
+        "element": "AND-2",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-277"
+      }
+    },
+    {
+      "id": "wire-307",
+      "from": {
+        "node": "node-277"
+      },
+      "to": {
+        "element": "NOT-4",
+        "port": "in0"
+      }
+    },
+    {
+      "id": "wire-308",
+      "from": {
+        "element": "NAND-3",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-278"
+      }
+    },
+    {
+      "id": "wire-309",
+      "from": {
+        "node": "node-278"
+      },
+      "to": {
+        "element": "OR-4",
+        "port": "in0"
+      }
+    },
+    {
+      "id": "wire-31",
+      "from": {
+        "element": "XOR-1",
+        "port": "out"
+      },
+      "to": {
+        "element": "NOT-1",
+        "port": "in0"
+      }
+    },
+    {
+      "id": "wire-310",
+      "from": {
+        "element": "OR-4",
+        "port": "in1"
+      },
+      "to": {
+        "node": "node-279"
+      }
+    },
+    {
+      "id": "wire-311",
+      "from": {
+        "node": "node-279"
+      },
+      "to": {
+        "element": "NOT-4",
+        "port": "out"
+      }
+    },
+    {
+      "id": "wire-314",
+      "from": {
+        "element": "OR-4",
+        "port": "out"
+      },
+      "to": {
+        "element": "LED-2",
+        "port": "in0"
+      }
+    },
+    {
+      "id": "wire-32",
+      "from": {
+        "element": "NAND-1",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-16"
+      }
+    },
+    {
+      "id": "wire-33",
+      "from": {
+        "node": "node-16"
+      },
+      "to": {
+        "element": "AND-2",
+        "port": "in0"
+      }
+    },
+    {
+      "id": "wire-34",
+      "from": {
+        "element": "NOR-1",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-17"
+      }
+    },
+    {
+      "id": "wire-35",
+      "from": {
+        "node": "node-17"
+      },
+      "to": {
+        "element": "AND-2",
+        "port": "in1"
+      }
+    },
+    {
+      "id": "wire-4",
+      "from": {
+        "node": "node-2"
+      },
+      "to": {
+        "element": "AND-1",
+        "port": "in1"
+      }
+    },
+    {
+      "id": "wire-7",
+      "from": {
+        "element": "SWITCH-3",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-4"
+      }
+    },
+    {
+      "id": "wire-8",
+      "from": {
+        "node": "node-4"
+      },
+      "to": {
+        "element": "OR-1",
+        "port": "in0"
+      }
+    }
+  ],
+  "view": {
+    "zoom": 0.5999999999999996,
+    "panX": 298.8625727213969,
+    "panY": 15.205472958414418
+  }
+}

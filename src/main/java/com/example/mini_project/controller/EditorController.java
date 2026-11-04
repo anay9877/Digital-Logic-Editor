@@ -14,17 +14,9 @@ import javafx.scene.control.ButtonType;
 import javafx.stage.Window;
 import javafx.util.Duration;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Comparator;
 import java.util.function.Consumer;
 
 public class EditorController {
@@ -572,7 +564,8 @@ public class EditorController {
         }
         if (!movedElements.isEmpty()) {
             //prajw : start
-            moveJunctionsWithMovedPorts(movedElements);
+            translateFullyMovedWireClusters(movedElements);   // junctions and bends travel with the group
+            moveJunctionsWithMovedPorts(movedElements);       // existing rule still covers partial moves
             //prajw: end
             for (CircuitElement element : movedElements) rerouteElementWires(element);
             stopSimulation();
@@ -652,6 +645,66 @@ public class EditorController {
             onWireStartFromPort(port);
         } else {
             onWireStartFromCanvas(x, y);
+        }
+    }
+
+    private void translateFullyMovedWireClusters(List<CircuitElement> movedElements) {
+        Set<String> movedIds = new HashSet<>();
+        for (CircuitElement e : movedElements) movedIds.add(e.getId());
+
+        Set<PointNode> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (PointNode start : new ArrayList<>(circuit.getPointNodes())) {
+            if (!seen.add(start)) continue;
+
+            // 1. Cluster = every PointNode reachable through node-to-node wires
+            List<PointNode> cluster = new ArrayList<>();
+            Set<WireSegment> segments = Collections.newSetFromMap(new IdentityHashMap<>());
+            Deque<PointNode> queue = new ArrayDeque<>();
+            queue.add(start);
+            while (!queue.isEmpty()) {
+                PointNode node = queue.poll();
+                cluster.add(node);
+                for (WireSegment seg : node.getConnectedSegments()) {
+                    segments.add(seg);
+                    PointNode other = seg.getStartNode() == node ? seg.getEndNode() : seg.getStartNode();
+                    if (other != null && seen.add(other)) queue.add(other);
+                }
+            }
+
+            // 2. Every port the cluster touches must belong to a moved element
+            //    and must have shifted by the same amount
+            double dx = 0, dy = 0;
+            boolean first = true, ok = true;
+            int attachedPorts = 0;
+            for (WireSegment seg : segments) {
+                for (int end = 0; end < 2 && ok; end++) {
+                    boolean isStart = (end == 0);
+                    Port port = isStart ? seg.getStartPort() : seg.getEndPort();
+                    if (port == null) continue;
+                    attachedPorts++;
+                    if (!movedIds.contains(port.getOwner().getId())) { ok = false; break; }
+                    double oldX = isStart ? seg.getX1() : seg.getX2();   // not rerouted yet = old position
+                    double oldY = isStart ? seg.getY1() : seg.getY2();
+                    double pdx = port.getAbsX() - oldX;
+                    double pdy = port.getAbsY() - oldY;
+                    if (first) { dx = pdx; dy = pdy; first = false; }
+                    else if (Math.abs(dx - pdx) > 0.001 || Math.abs(dy - pdy) > 0.001) ok = false;
+                }
+                if (!ok) break;
+            }
+            if (!ok || attachedPorts == 0 || (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001)) continue;
+
+            // 3. Rigid translation: the nodes and every wire touching them shift together
+            for (PointNode node : cluster) {
+                node.setX(node.getX() + dx);
+                node.setY(node.getY() + dy);
+            }
+            for (WireSegment seg : segments) {
+                seg.setX1(seg.getX1() + dx);
+                seg.setY1(seg.getY1() + dy);
+                seg.setX2(seg.getX2() + dx);
+                seg.setY2(seg.getY2() + dy);
+            }
         }
     }
 
