@@ -127,6 +127,10 @@ public class CircuitSerializer {
 
         rebuildModel(dto, circuit, controller);
 
+        if (viewport != null && dto.view != null) {
+            viewport.setView(dto.view.zoom, dto.view.panX, dto.view.panY);
+        }
+
         if (controller != null) {
             controller.notifyRender();
             controller.resetHistory();
