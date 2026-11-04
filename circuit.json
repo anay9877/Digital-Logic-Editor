@@ -1,0 +1,194 @@
+{
+  "format": "digital-logic-editor",
+  "elements": [
+    {
+      "id": "AND-1",
+      "type": "AND",
+      "x": 220.0,
+      "y": 120.0
+    },
+    {
+      "id": "LED-1",
+      "type": "LED",
+      "x": 480.0,
+      "y": 80.0
+    },
+    {
+      "id": "LED-2",
+      "type": "LED",
+      "x": 680.0,
+      "y": 300.0
+    },
+    {
+      "id": "NOT-1",
+      "type": "NOT",
+      "x": 500.0,
+      "y": 340.0
+    },
+    {
+      "id": "SWITCH-1",
+      "type": "SWITCH",
+      "x": 60.0,
+      "y": 60.0,
+      "props": {
+        "state": "OFF"
+      }
+    },
+    {
+      "id": "SWITCH-2",
+      "type": "SWITCH",
+      "x": 40.0,
+      "y": 280.0,
+      "props": {
+        "state": "OFF"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "node-1",
+      "x": 220.0,
+      "y": 100.0
+    },
+    {
+      "id": "node-2",
+      "x": 220.0,
+      "y": 320.0
+    },
+    {
+      "id": "node-3",
+      "x": 540.0,
+      "y": 180.0
+    },
+    {
+      "id": "node-4",
+      "x": 440.0,
+      "y": 180.0
+    },
+    {
+      "id": "node-5",
+      "x": 440.0,
+      "y": 400.0
+    },
+    {
+      "id": "node-6",
+      "x": 740.0,
+      "y": 400.0
+    }
+  ],
+  "wires": [
+    {
+      "id": "wire-1",
+      "from": {
+        "element": "SWITCH-1",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-1"
+      }
+    },
+    {
+      "id": "wire-10",
+      "from": {
+        "node": "node-5"
+      },
+      "to": {
+        "element": "NOT-1",
+        "port": "in0"
+      }
+    },
+    {
+      "id": "wire-11",
+      "from": {
+        "element": "NOT-1",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-6"
+      }
+    },
+    {
+      "id": "wire-12",
+      "from": {
+        "node": "node-6"
+      },
+      "to": {
+        "element": "LED-2",
+        "port": "in0"
+      }
+    },
+    {
+      "id": "wire-2",
+      "from": {
+        "node": "node-1"
+      },
+      "to": {
+        "element": "AND-1",
+        "port": "in0"
+      }
+    },
+    {
+      "id": "wire-3",
+      "from": {
+        "element": "SWITCH-2",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-2"
+      }
+    },
+    {
+      "id": "wire-4",
+      "from": {
+        "node": "node-2"
+      },
+      "to": {
+        "element": "AND-1",
+        "port": "in1"
+      }
+    },
+    {
+      "id": "wire-6",
+      "from": {
+        "node": "node-3"
+      },
+      "to": {
+        "element": "LED-1",
+        "port": "in0"
+      }
+    },
+    {
+      "id": "wire-7",
+      "from": {
+        "element": "AND-1",
+        "port": "out"
+      },
+      "to": {
+        "node": "node-4"
+      }
+    },
+    {
+      "id": "wire-8",
+      "from": {
+        "node": "node-4"
+      },
+      "to": {
+        "node": "node-3"
+      }
+    },
+    {
+      "id": "wire-9",
+      "from": {
+        "node": "node-4"
+      },
+      "to": {
+        "node": "node-5"
+      }
+    }
+  ],
+  "view": {
+    "zoom": 1.0,
+    "panX": 0.0,
+    "panY": 0.0
+  }
+}

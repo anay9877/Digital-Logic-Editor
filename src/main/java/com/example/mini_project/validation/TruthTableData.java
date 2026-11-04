@@ -27,13 +27,11 @@ public final class TruthTableData {
     private final List<String> inputIds;
     private final List<String> outputIds;
     private final List<Row> rows;
-    private final int currentRow;
 
     public TruthTableData(List<String> inputIds, List<String> outputIds, List<Row> rows, int currentRow) {
         this.inputIds = List.copyOf(inputIds);
         this.outputIds = List.copyOf(outputIds);
         this.rows = List.copyOf(rows);
-        this.currentRow = currentRow;
     }
 
     public List<String> getInputIds() { return inputIds; }

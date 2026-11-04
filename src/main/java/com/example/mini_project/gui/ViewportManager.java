@@ -19,7 +19,7 @@ public class ViewportManager {
     private Runnable onChange = () -> {};
 
     private double zoom = 1.0;
-    private static final double MIN_ZOOM = 0.25;
+    private static final double MIN_ZOOM = 0.05;
     private static final double MAX_ZOOM = 4.0;
     private static final double ZOOM_STEP = 0.05;
 

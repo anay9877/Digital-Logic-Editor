@@ -1,0 +1,24 @@
+Nov 04, 2026 2:41:17 AM com.sun.javafx.application.PlatformImpl startup
+WARNING: Unsupported JavaFX configuration: classes were loaded from 'unnamed module @36695644'
+switches,rows,gates,truth_table_ms(median of 5),table_heap_KB
+1,2,0,0.059,0
+1,2,0,0.068,0
+2,4,1,0.210,0
+2,4,200,5.831,0
+3,8,2,0.290,0
+3,8,300,3.213,0
+4,16,3,0.265,1
+4,16,400,5.017,1
+5,32,4,0.330,2
+5,32,500,3.790,2
+6,64,5,0.381,5
+6,64,600,4.030,82
+7,128,6,0.145,9
+7,128,700,3.005,9
+8,256,7,0.289,19
+8,256,800,5.452,19
+9,512,8,0.264,42
+9,512,900,5.441,46
+10,1024,9,0.204,84
+10,1024,1000,3.435,92
+11 switches -> Truth table unavailable: 11 switches would need 2048 rows (limit is 10 switches).
