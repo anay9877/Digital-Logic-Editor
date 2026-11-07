@@ -244,7 +244,4 @@ src/main/java/com/example/mini_project/
 
 ## Authors
 
-Piyush Deshpande
-Prajwal More
-Niranjan Gavali
-Anay Mulay
+Piyush Deshpande, Prajwal More, Niranjan Gavali, Anay Mulay
