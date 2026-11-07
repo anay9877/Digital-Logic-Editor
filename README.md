@@ -1,107 +1,250 @@
-Mini_Project
+# Digital Logic Editor
 
-Make the branches name according to you names and start working upon project
-Also make sure once the code from your side is completed please upload it on the *main branch
-Update the README accordingly also
+A desktop application for designing and simulating digital logic circuits, built with **Java** and **JavaFX**.
+Place gates, switches and LEDs on a canvas, wire them together, validate the design, run a live simulation and
+generate truth tables, all from one editor.
 
-THIS IS HOW JAVAFX WORKS:
+## Features
 
-Background: How a JavaFX Application is Structured
+- **Component palette**: AND, OR, NOT, XOR, NAND, NOR gates, input switches and output LEDs, drawn from SVG artwork.
+- **Wiring**: drag from a port to another port to draw orthogonal wires. Drag from the middle of a wire to create a junction.
+- **Selection**: click, Shift/Ctrl-click for multi-select, or drag a rubber band around several items.
+- **Move**: drag selected components. Wires and junctions follow, and moves that would overlap another component are rejected.
+- **Undo / Redo**: every edit (place, move, delete, wire, switch toggle) is recorded as a command.
+- **Validation**: finds dangling wires, unconnected inputs, missing switches/LEDs, dead logic, multiple drivers on one wire and combinational loops. Problem items are highlighted in red and listed in an error panel.
+- **Live simulation**: signals are pushed through the circuit in topological order. Click a switch and the LEDs and wire colours update.
+- **Truth tables**: one table per disconnected sub-circuit, shown in a separate window. Selecting a table highlights that sub-circuit on the canvas.
+- **Save / Load** circuits as JSON, and **Import / Export SVG**.
+- **Zoom and pan** with the mouse, toolbar or keyboard.
 
-STAGE is the actual application window — the frame with a title bar, close button, and border that the operating system displays. Every JavaFX application has one main Stage, created automatically when the application starts.
+## Tech stack
 
-SCENE is the container for everything visible inside that window. A Stage can only display one Scene at a time (though it can be swapped out, e.g. switching from a "menu screen" to an "editor screen"). The Scene holds the actual content — buttons, canvases, toolbars — and defines things like the window's width and height.
+| Area | Technology |
+|---|---|
+| Language | Java 17 or newer |
+| UI | JavaFX (controls, graphics) |
+| SVG rendering | [FXSVGImage](https://github.com/hervegirod/fxsvgimage) (`org.girod.javafx.svgimage`) |
+| JSON persistence | Gson |
+| Build tool | Maven (`javafx-maven-plugin`) |
 
-NODE is the general term for anything that can be placed inside a Scene — a button, a shape, an image, a text label, or *a container that groups other nodes together*. Every visible element in a JavaFX application, no matter how simple or complex, is a Node.
+## Prerequisites
 
-THE SCENE GRAPH is the tree structure formed by nesting nodes inside other nodes. For example, a Scene might contain a BorderPane (a layout container), which contains a Toollbar at the top and a drawing area in the center; that drawing area might contain individual shapes representing each logic gate. This entire nested structure — from the Scene down to the smallest shape — is called the scene graph, and JavaFX automatically handles drawing it, detecting mouse clicks on the correct node, and redrawing it when something changes.
+You need three things: a **JDK 17+**, **Maven 3.8+** and **Git**.
+JavaFX does **not** need a separate installation. Maven downloads it automatically the first time you run the project.
 
-Why this matters for the project: every interactive feature already implemented — clicking to place a gate, clicking a port to draw a wire, dragging a component, toggling a switch — works because these elements are all genuine Node objects living inside the same scene graph. JavaFX's built-in mouse-event system (onMouseClicked, onMouseDragged, etc.) automatically knows which node was clicked, based on its position in this tree, and the project's Circuit/Port/Wire classes are simply attached to these nodes to track the underlying logic.
+Check what you already have:
 
-This is the reason the choice between the two SVG rendering approaches matters so much: one approach (fxsvgimage) produces genuine nodes that slot into this same scene graph, keeping the entire application's interaction logic consistent in one place. The other (WebView) renders content inside an embedded web browser, which is technically also a Node in the scene graph, but everything drawn inside it is invisible to JavaFX's own node system — it exists in a separate browser document with its own internal structure that JavaFX cannot see into or directly interact with. Any click, drag, or selection happening inside a WebView needs a completely separate piece of code (written in JavaScript, not Java) to detect and then relay back to the rest of the application.
+```bash
+java -version     # should print 17 or higher
+mvn -version      # should print Maven 3.8 or higher, and the same Java version
+git --version
+```
 
-We were having conflict on which idea to be used for reading -> parsing -> selection(drag and drop) of svg.
-JavaFX has no built-in SVG image loader (unlike PNG/JPEG). SVG files contain vector elements (<path>, <circle>, <rect>, <g>) that JavaFX's Image class cannot interpret directly — parsing is required. Two viable approaches were evaluated for rendering gate, switch, and LED graphics from SVG source files.
+If all three work, skip to [Running the project](#running-the-project).
 
-2 ideas were finalized
-1. fxsvgimage - SVG to Node Parsing
-This library parses SVG markup and converts each element into a native JavaFX Shape node (SVGPath, Circle, Rectangle, etc.), grouped into a javafx.scene.Group. The resulting group is inserted directly into the application's existing scene graph, alongside wires, ports, and selection overlays.
-2. WebView - Embedded Browser Rendering
-JavaFX bundles a WebKit-based WebView component capable of rendering any SVG with full fidelity, since it uses a complete browser rendering engine. The SVG is loaded as web content inside an embedded browser viewport.
+### Installing the prerequisites
 
-Decision - fxsvgimage to be opted for this project
-The project's entire interaction model — component selection, dragging, port-to-port wiring, grid snapping — is built around JavaFX's native scene graph and mouse-event system operating on the Circuit/CircuitElement/Port domain model. fxsvgimage converts SVG graphics into real JavaFX nodes that plug directly into this existing model, requiring no parallel interaction system. WebView, while offering perfect rendering fidelity, isolates content inside a browser document that cannot be hit-tested or manipulated through the existing Java object model without significant bridging code — effectively duplicating the interaction layer in JavaScript. Given the project's non-functional requirement of supporting up to 5,000 logic components and 10,000 connections, fxsvgimage's lightweight node-based rendering is also better suited to scale than instantiating a full browser engine per component.
+**Ubuntu / Debian**
 
-Right now, CircuitCanvasView draws everything on a single Canvas using GraphicsContext — this is called immediate-mode rendering: every frame, you manually recalculate every pixel position and repaint the whole thing from scratch. Nothing "remembers" itself between frames.
+```bash
+sudo apt update
+sudo apt install -y openjdk-17-jdk maven git
+```
 
-Once you switch to fxsvgimage, each gate becomes a real JavaFX Node living permanently in the scene graph — this is retained-mode rendering: nodes persist, and you move/scale them by changing their properties, not by redrawing pixels.
+**Fedora**
 
-This actually makes zoom/pan easier, not harder.
+```bash
+sudo dnf install -y java-17-openjdk-devel maven git
+```
 
-This would be diagram for Node Graph
-Pane (root)
- ├── Canvas (grid only — redrawn on pan/zoom, screen-space)
- └── Group "worldGroup" (scaled/translated as one unit)
-      ├── Gate nodes (from fxsvgimage)
-      ├── Switch/LED nodes
-      └── Wire shapes
+**Arch Linux**
 
-**Data Structures to be used**
-Data Structure - Which we are going to use for this evaluation
-1. ArrayList -> Circuit.elements, Circuit.wires - Ordered storage of all gates/switches/LEDs and all wires currently on the canvas
-2. HashMap	-> Circuit.elementIndex (ID -> CircuitElement), Circuit.portIndex (ID -> Port) - O(1) lookup of any component/port by its unique ID, instead of scanning the list
-(ID->CircuitElement) this is going to be the mapping and also same for ID and Port
-3. HashMap -> ComponentFactory.componentRegistry (String -> ComponentType)	- Maps a type name to its enum constant for creation
-4. HashMap ->	IdGenerator.counters (prefix -> running count) - Tracks the next free number per ID prefix (GATE-1, PORT-7, etc.)
-5. Enum -> ComponentType, PortType, SignalState -	Fixed, closed sets of values — gate kinds, port direction, signal level
-6. (IMPORTANT) JavaFX Scene Graph (Tree) -> *worldGroup (new, from the fxsvgimage pivot)*	Each parsed SVG gate becomes a node subtree; nesting them under one Group lets zoom/pan transform everything as a unit
-7. List (bendPoints) -> Wire.bendPoints - Ordered path points for wire routing (currently empty/straight-line; will hold the 1-bend point later)
-(This 7th point to be implemented later as it has orthogonal routing)
+```bash
+sudo pacman -S jdk17-openjdk maven git
+```
 
-Data Structure - Which we have planned of implementing for further evaluations
-1. HashSet -> SelectionManager.selectedIds - Fast add/remove/contains for multi-select, no duplicates
-2. 2 Stacks -> CommandManager — undo stack + redo stack - Command-pattern undo/redo
-3. Directed Graph (adjacency list via HashMap<Node, List<Edge>>) - Circuit Model implementation, that is, this would be the structure for storing the Circuit instead of having a GraphBuilder class
-3. Queue -> Topological sort (Kahn's algorithm) for evaluation order - Determines the order gates must be evaluated in
-4. Stack (or recursion) -> Cycle detection (DFS with visiting/visited marking) - Flags illegal feedback loops in a combinational only circuit
+**macOS (Homebrew)**
 
-**Class Connectivity**
-EditorWindow  (Application entry point)
- │
- ├─ creates → Circuit                         (the model — holds elements + wires)
- │
- ├─ creates → CircuitCanvasView                (extends Pane; renders via worldGroup + grid Canvas)
- │              └─ uses → ComponentFactory       (creates Gate/Switch/LedProbe instances)
- │              └─ uses → GridManager           (drawn as separate background Canvas layer)
- │              └─ (each gate/switch/LED node)  → parsed from SVG via fxsvgimage
- │
- ├─ creates → EditorController                 (orchestrator)
- │              ├─ holds → Circuit
- │              ├─ holds → CircuitCanvasView
- │              ├─ holds → ViewportManager     (drives worldGroup's scale/translate transform)
- │              └─ holds → GridManager         (redrawn on every pan/zoom change)
- │
- ├─ creates → EditorToolbar                    (buttons → call EditorController methods)
- │              └─ calls → EditorController.{toggleGrid, zoomIn, zoomOut,
- │                          activateSelectTool*, activateWireTool*, activatePanTool*,
- │                          undo*, redo*, stopSimulation*}   (* = currently stubbed)
- │
- └─ creates → CircuitElementPalette            (buttons per ComponentType)
-                └─ calls → EditorController.selectComponentType(type)
-                              └─ forwards to → CircuitCanvasView.setPendingType(type)
+```bash
+brew install openjdk@17 maven git
+sudo ln -sfn "$(brew --prefix openjdk@17)/libexec/openjdk.jdk" /Library/Java/JavaVirtualMachines/openjdk-17.jdk
+```
 
+**Windows**
 
-Circuit  (model, framework-independent)
- ├─ List<CircuitElement> elements
- ├─ List<Wire> wires
- ├─ HashMap elementIndex, portIndex
- └─ CircuitElement (abstract)
-      ├─ Gate (AND/OR/NOT/NAND/NOR/XOR/XNOR — port count set by type)
-      ├─ Switch (1 output port, toggleable)
-      └─ LedProbe (1 input port, displays state)
-           each holds → List<Port>
-                          Port → SignalState, PortType, owner reference, connectedWire reference
+Using `winget` for the JDK and Git, and Chocolatey for Maven (run in an administrator terminal):
 
-Wire
- ├─ Port source, Port target
- └─ List<Point2D> bendPoints
+```powershell
+winget install EclipseAdoptium.Temurin.17.JDK
+winget install Git.Git
+choco install maven
+```
+
+If you do not use Chocolatey, download the Maven binary zip from <https://maven.apache.org/download.cgi>, unzip it, and add its `bin` folder to your `PATH`.
+
+Open a **new** terminal afterwards so the new `PATH` is picked up.
+
+**If `java` or `mvn` is not found after installing**, set `JAVA_HOME`:
+
+```bash
+# Linux example (adjust the path to your JDK)
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+export PATH="$JAVA_HOME/bin:$PATH"
+```
+
+#### Optional: installing JavaFX manually
+
+Not required for `mvn javafx:run`. Only do this if you want a system-wide JavaFX SDK for your IDE.
+
+```bash
+# Ubuntu / Debian
+sudo apt install -y openjfx
+
+# macOS
+brew install openjfx
+```
+
+On Windows, or for any other platform, download the SDK from <https://gluonhq.com/products/javafx/> and unzip it.
+
+## Running the project
+
+1. **Fork** this repository using the **Fork** button at the top right of the GitHub page.
+2. **Clone your fork** and go into the project folder:
+
+   ```bash
+   git clone https://github.com/<your-username>/<repository-name>.git
+   cd <repository-name>
+   ```
+
+   Make sure you are in the folder that contains `pom.xml`.
+
+3. **Build and run:**
+
+   ```bash
+   mvn clean javafx:run
+   ```
+
+The first run downloads dependencies, so it takes a little longer. The **Digital Logic Editor** window opens when the build finishes.
+
+> The command is `javafx:run`, written with a **colon** and no spaces.
+> `mvn javafx run` fails with `Unknown lifecycle phase "javafx"`.
+
+## How to use the editor
+
+### Building a circuit
+
+1. Pick a component from the **palette** on the left (AND, OR, SWITCH, LED, and so on), then click the canvas to place it.
+2. Choose **Select** in the toolbar to go back to selecting and moving things.
+3. **Draw a wire** by dragging from a port dot to another port. Output ports connect to input ports.
+4. **Create a junction** by dragging from the middle of an existing wire.
+5. Click **Validate** to check the circuit, then **Simulate** to run it. Click a switch to toggle it.
+6. Click **TruthTable** to see the truth table of every complete sub-circuit.
+
+### Toolbar
+
+| Button | Action |
+|---|---|
+| Select | Select, move and wire components |
+| Delete | Delete the selected items |
+| Undo / Redo | Step backward or forward through your edits |
+| Zoom_In / Zoom_Out | Zoom the canvas |
+| Simulate | Start or stop the live simulation (only starts if the circuit is valid) |
+| Validate | Run all validation checks |
+| TruthTable | Open the truth-table window |
+| Home | Reset the view |
+
+### Mouse and keyboard
+
+| Input | Action |
+|---|---|
+| Left click | Select, or place the chosen component |
+| Shift / Ctrl + click | Add to or remove from the selection |
+| Drag on empty canvas | Rubber-band selection |
+| Drag a selected component | Move the selection |
+| Click a switch | Toggle it ON / OFF |
+| Right mouse drag | Pan the canvas |
+| Ctrl + scroll wheel | Zoom |
+| Ctrl + `+` / Ctrl + `-` | Zoom in / out |
+| `Esc` | Clear the selection |
+| `Delete` / `Backspace` | Delete the selection |
+| Ctrl + Z | Undo |
+| Ctrl + Shift + Z or Ctrl + Y | Redo |
+| Ctrl + N / O / S | New / Open / Save |
+
+### File menu
+
+| Item | Description |
+|---|---|
+| New | Start an empty circuit |
+| Open / Load... | Open a circuit saved as `.json` |
+| Save / Save As... | Save the circuit as `.json` |
+| Import SVG... / Export SVG... | Exchange the circuit through an `.svg` file |
+| Exit | Close the editor |
+
+## How it works
+
+### Validation
+
+`CircuitValidator` and `ConnectionValidator` check a circuit before it is simulated, and a wire is also checked at the moment you draw it:
+
+- dangling wires and unconnected gate or LED inputs
+- missing switch or LED in a sub-circuit
+- dead logic (gates that do not contribute to any LED)
+- more than one driver on the same wire network
+- combinational loops, which are rejected when you draw the wire and detected again during sorting
+
+### Simulation
+
+1. `CircuitTopology` groups wires and junctions into electrical networks and builds a dependency graph between elements.
+2. **Kahn's algorithm** produces a topological order. If some elements cannot be ordered, the circuit contains a loop.
+3. `CompiledCircuit` / the simulator walks the elements in that order. Switches push their value onto the wires, gates call `evaluate()`, and LEDs latch their input. Every gate is therefore evaluated only after every gate that feeds it.
+
+### Sub-circuits and truth tables
+
+`Circuit.splitIntoDisjointSubCircuits()` runs a BFS over the wire graph and returns each connected piece as a `SubCircuit`.
+For each piece, `TruthTableGenerator` validates it, sorts it, and drives every combination of its switches through the simulator
+(2<sup>n</sup> rows for n switches, up to **10 switches** per sub-circuit). The switches are restored to their original state afterwards.
+Unfinished sub-circuits show an error message instead of a table, and do not block the others.
+
+### Design
+
+| Concept | Where |
+|---|---|
+| Layered architecture (GUI / controller / domain / validation / persistence) | package layout below |
+| Command pattern for undo / redo | `controller.command`, `HistoryManager` |
+| Observer / callbacks for selection changes | `SelectionManager` |
+| Polymorphic creation (each `ComponentType` builds its own element) | `ComponentType` |
+| DTOs for saving and loading | `persistence.CircuitDto`, `CircuitSerializer` |
+
+## Project structure
+
+```
+src/main/java/com/example/mini_project/
+├── controller/          EditorController, SelectionManager, HistoryManager
+│   └── command/         Command pattern: place, move, remove, wire change, toggle input
+├── domain/              Circuit, gates, Port, WireSegment, PointNode, SubCircuit, SvgIconRegistry
+├── gui/                 EditorWindow, CircuitCanvas, EditorToolbar, CircuitElementPalette,
+│                        TruthTableWindow, ValidationErrorPanel, ViewportManager
+├── persistence/         CircuitDto, CircuitSerializer (JSON / SVG)
+└── validation/          CircuitValidator, ConnectionValidator, CircuitTopology,
+                         CompiledCircuit, TruthTableGenerator, TruthTableData, SubCircuitTable
+```
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `Unknown lifecycle phase "javafx"` | You typed `mvn javafx run`. Use `mvn clean javafx:run` (colon, no space). |
+| `No plugin found for prefix 'javafx'` or `there is no POM in this directory` | Run the command from the folder that contains `pom.xml`. |
+| `release version 17 not supported` or `invalid target release` | Your JDK is too old. Install JDK 17+ and check `java -version` and `mvn -version` both report it. |
+| `JAVA_HOME is not defined correctly` | Set `JAVA_HOME` to your JDK folder (see the installation section). |
+| `JavaFX runtime components are missing` | Start the app with `mvn javafx:run` and not by running the class directly. In an IDE, add the JavaFX modules as VM options. |
+| Window does not open on Linux over SSH or WSL | JavaFX needs a display. Use a local desktop session, WSLg, or an X server. |
+| Dependencies fail to download | Check your network or proxy settings, then retry. `mvn clean javafx:run -U` forces an update. |
+
+## Authors
+
+Piyush Deshpande
+Prajwal More
+Niranjan Gavali
+Anay Mulay
