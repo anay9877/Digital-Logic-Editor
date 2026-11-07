@@ -112,8 +112,8 @@ On Windows, or for any other platform, download the SDK from <https://gluonhq.co
 2. **Clone your fork** and go into the project folder:
 
    ```bash
-   git clone https://github.com/<your-username>/<repository-name>.git
-   cd <repository-name>
+   git clone https://github.com/anay9877/Digital-Logic-Editor.git
+   cd Digital-Logic-Editor
    ```
 
    Make sure you are in the folder that contains `pom.xml`.
