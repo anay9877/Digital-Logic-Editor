@@ -1,6 +1,0 @@
-Nov 04, 2026 2:40:03 AM com.sun.javafx.application.PlatformImpl startup
-WARNING: Unsupported JavaFX configuration: classes were loaded from 'unnamed module @36695644'
-max heap = 256 MB;  stop when SIMULATE_total_ms > 2000.0
-gates,SIMULATE_total_ms,full_eval_ms,heap_MB
-10000,26534.0,11.826,10.9
-STOP: time budget exceeded. Max practical gates = 10000
